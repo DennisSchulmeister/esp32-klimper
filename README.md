@@ -6,6 +6,7 @@ ESP32 I²S Synthesizer Test
 1. [Required Hardware](#required-hardware)
 1. [Software Architecture](#software-architecture)
 1. [Performance Considerations](#performance-considerations)
+1. [How to build and flash](#how-to-build-and-flash)
 1. [Copyright](#copyright)
 
 Demo
@@ -102,6 +103,14 @@ Performance Considerations
 
 1. ESP32 supports some very basic SIMD operations. But I am not sure if they are actually used
    by the compiler. Need to check this.
+
+How to build and flash
+----------------------
+
+1. Install the Espressif IDF if not done, yet.
+1. Plug-in the ESP32 via USB.
+1. Run `get_idf` once to enable the build environment.
+1. Run `idf.py build flash monitor` to compile, flash and monitor the serial output.
 
 Copyright
 ---------
