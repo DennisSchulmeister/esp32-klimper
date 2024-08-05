@@ -18,7 +18,7 @@ static const char* TAG = "audiohw";             // Logging tag
 
 static bool i2s_isr_on_sent(i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx);
 
-static TaskHandle_t mixer_task;                 // Mixer task to notify
+static TaskHandle_t dsp_task;                   // DSP task to notify
 static spinlock_t* spinlock;                    // Spinlock for critical section
 static audiohw_buffer_t audiohw_buffer = {};    // Buffer information passed to mixer task
 static i2s_chan_handle_t tx_handle;             // I²S Transmit Handle
@@ -27,7 +27,7 @@ static i2s_chan_handle_t tx_handle;             // I²S Transmit Handle
  * Initialize audio hardware layer.
  */
 void audiohw_init(audiohw_config_t* config) {
-    mixer_task = config->mixer_task;
+    dsp_task = config->dsp_task;
     spinlock = config->spinlock;
 
     i2s_chan_config_t channel_config = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER); 
@@ -101,7 +101,7 @@ static IRAM_ATTR bool i2s_isr_on_sent(i2s_chan_handle_t handle, i2s_event_data_t
     BaseType_t higherPriorityTaskWoken = pdFALSE;
 
     xTaskNotifyAndQueryFromISR(
-        /* xTaskToNotify            */ mixer_task,
+        /* xTaskToNotify            */ dsp_task,
         /* ulValue                  */ (uint32_t) &audiohw_buffer,
         /* eAction                  */ eSetValueWithOverwrite,
         /* pulPreviousNotifyValue   */ NULL,

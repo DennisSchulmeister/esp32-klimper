@@ -91,7 +91,7 @@ void app_main(void) {
         .i2s_lrc_io  = GPIO_NUM_25,
         .i2s_bck_io  = GPIO_NUM_26,
         .i2s_dout_io = GPIO_NUM_27,
-        .dsp_task  = dsp_task_handle,
+        .dsp_task    = dsp_task_handle,
         .spinlock    = &dsp_task_spinlock,
     };
 
@@ -117,7 +117,7 @@ void dsp_task(void* parameters) {
         for (int i = 0; (i < N_SAMPLES_BUFFER) && (i < tx_buffer->size); i++) {
             // NOTE: The assumption here is that the buffer provided by the audio hardware has the
             // same size as the DSP buffer used here. There is a maximum limit of how big a DMA buffer
-            // can be on the ESP32. But we assume that as real-time applications we are below that limit.
+            // can be on the ESP32. But we assume that as real-time application we are below that limit.
             tx_buffer->data[i] = (int16_t) (32768 * dsp_buffer[i]);
         }
 

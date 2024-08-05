@@ -24,7 +24,7 @@ typedef struct audiohw_config {
     int          i2s_lrc_io;                // I²S Left/Right Clock
     int          i2s_bck_io;                // I²S Bit Clock
     int          i2s_dout_io;               // I²S Data Output
-    TaskHandle_t mixer_task;                // Mixer Task
+    TaskHandle_t dsp_task;                  // DSP Task
     spinlock_t*  spinlock;                  // Spinlock for Mixer Task
 } audiohw_config_t;
 
@@ -39,9 +39,9 @@ typedef struct audiohw_buffer {
 } audiohw_buffer_t;
 
 /**
- * Initialize audio hardware. Initializes the I²S driver and installs and
+ * Initialize audio hardware. Initializes the I²S driver and installs an
  * ISR to pull new audio data to be played. The ISR sends a notification
- * to an external mixer task that provides the actual audio data.
+ * to an external DSP task that provides the actual audio data.
  * 
  * @param config Configuration parameters (can be freed afterwards)
  */

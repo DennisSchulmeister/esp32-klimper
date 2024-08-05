@@ -5,6 +5,7 @@ ESP32 I²S Synthesizer Test
 1. [Description](#description)
 1. [Required Hardware](#required-hardware)
 1. [Software Architecture](#software-architecture)
+1. [Performance Considerations](#performance-considerations)
 1. [Copyright](#copyright)
 
 Demo
@@ -86,6 +87,21 @@ Pointers given to a function are usually not stored by the function. Most of the
 the objects on stack (e.g. the configuration objects) or free the pointer otherwise. The only exception is
 the synthesizer given to the sequencer, which of course must exist for as long as the sequencer is active.
 And the `xyz_free()` functions with by design remove an object from memory.
+
+Performance Considerations
+--------------------------
+
+1. Most code runs from flash memory, which uses `DIO` (double I/O) by default. If the hardware
+   supports it, setting this to quad I/O in the `menuconfig` doubles the access speed.
+
+1. Performance critical code can be loaded into IRAM on start-up. But it has only small capacity
+   and there is no guarantee that the code remains there forever.
+
+1. `double` calculations are implemented in software as the FPU only supports single-precission
+   `float` values. But that should be okay for generic audio DSP.
+
+1. ESP32 supports some very basic SIMD operations. But I am not sure if they are actually used
+   by the compiler. Need to check this.
 
 Copyright
 ---------
