@@ -46,32 +46,24 @@ void app_main(void) {
 
     synth = synth_new(&synth_config);
 
-    synth->params.amplitude = 0.2;
-    synth->params.attack    = 0.1;
-    synth->params.decay     = 0.3;
-    synth->params.sustain   = 0.5;
-    synth->params.release   = 0.5;
+    synth_set_volume(synth, 1.0);
+    synth_set_amplitude_attack (synth, 0.1);
+    synth_set_amplitude_decay  (synth, 0.3);
+    synth_set_amplitude_sustain(synth, 0.5);
+    synth_set_amplitude_release(synth, 0.5);
 
     // Create sequencer
+    int notes[] = {48, 50, 52, 53, 55, 57, 59, 60};
+
     sequencer_config_t sequencer_config = {
         .sample_rate = SAMPLE_RATE,
         .synth       = synth,
+        .n_notes     = 8,
+        .notes       = notes,
     };
 
     sequencer = sequencer_new(&sequencer_config);
     sequencer_set_bpm(sequencer, 80);
-
-    sequencer->params.n_notes = 8;
-    sequencer->params.notes   = calloc(8, sizeof(int));
-
-    sequencer->params.notes[0] = 48;
-    sequencer->params.notes[1] = 50;
-    sequencer->params.notes[2] = 52;
-    sequencer->params.notes[3] = 53;
-    sequencer->params.notes[4] = 55;
-    sequencer->params.notes[5] = 57;
-    sequencer->params.notes[6] = 59;
-    sequencer->params.notes[7] = 60;
 
     // Initialize audio hardware and mixer task. This must happen last to avoid
     // using the DSP objects before they are initialized.

@@ -16,20 +16,11 @@
 struct sequencer_pimpl;
 
 /**
- * User-changeable parameters of the sequencer.
- */
-typedef struct sequencer_parameters {
-    size_t n_notes;                         // Number of available MIDI notes
-    int*   notes;                           // Array with available MIDI notes (not freed by `sequencer_free()`)
-} sequencer_parameters_t;
-
-/**
  * A simple sequencer that triggers random notes from a given scale
  * on the synthesizer.
  */
 typedef struct sequencer {
     struct sequencer_pimpl* pimpl;          // Private implementation
-    struct sequencer_parameters params;     // User-changeable parameters
 } sequencer_t;
 
 /**
@@ -38,6 +29,8 @@ typedef struct sequencer {
 typedef struct sequencer_config {
     int      sample_rate;                   // Sample rate in Hz
     synth_t* synth;                         // The controlled synthesizer (not freed by `sequencer_free()`)
+    int*     notes;                         // Array with available MIDI notes (will be copied)
+    size_t   n_notes;                       // Number of available MIDI notes
 } sequencer_config_t;
 
 /**
@@ -63,6 +56,14 @@ void sequencer_free(sequencer_t* sequencer);
  * @param bpm New beats-per-minute
  */
 void sequencer_set_bpm(sequencer_t* sequencer, int bpm);
+
+/**
+ * Get the musical tempo of the sequencer.
+ * 
+ * @param sequencer Sequencer instance
+ * @returns Current beats-per-minute
+ */
+int sequencer_get_bpm(sequencer_t* sequencer);
 
 /**
  * Run the sequencer to create new events based on the time passed since the last call.

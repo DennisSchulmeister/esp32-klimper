@@ -35,11 +35,29 @@ typedef enum synth_voice_state {
  * Tone-generating voice.
  */
 typedef struct synth_voice {
-    int                 note;           // MIDI note number
-    float               pan;            // Panorama
-    float               velocity;       // Velocity
-    synth_voice_state_t state;          // AEnv state
+    int                 note;               // MIDI note number
+    float               pan;                // Panorama
+    float               velocity;           // Velocity
+    synth_voice_state_t state;              // Amplitude envelope state
 } synth_voice_t;
+
+/**
+ * Breakpoint-value for the envelope generator.
+ */
+typedef struct synth_breakpoint {
+    float sec;                              // Breakpoint time in seconds
+    float smp;                              // Breakpoint time in samples
+} synth_breakpoint_t;
+
+/**
+ * ADSR envelope breakpoints.
+ */
+typedef struct synth_adsr {
+    synth_breakpoint_t attack;              // Attack time
+    synth_breakpoint_t decay;               // Decay time
+    float              sustain;             // Sustain level
+    synth_breakpoint_t release;             // Release time
+} synth_adsr_t;
 
 /**
  * Private properties of the synthesizer (pimpl idiom).
@@ -49,6 +67,8 @@ typedef struct synth_pimpl {
     int            polyphony;               // Number of voices
     synth_voice_t* voices;                  // Voices that actually create sound
     float*         wavetable;               // Wavetable for a simple sine wave
+    float          volume;                  // Overall volume
+    synth_adsr_t   aenv;                    // Amplitude envelope
 } synth_pimpl_t;
 
 /**
@@ -85,6 +105,79 @@ void synth_free(synth_t* synth) {
     free(synth->pimpl);
     free(synth);
 
+}
+
+/**
+ * Set overall volume of the synthesizer.
+ */
+void synth_set_volume(synth_t* synth, float volume)  {
+    synth->pimpl->volume = volume;
+}
+
+/**
+ * Get overall volume of the synthesizer.
+ */
+float synth_get_volume(synth_t* synth) {
+    return synth->pimpl->volume;
+}
+
+/**
+ * Set the amplitude attack time.
+ */
+void synth_set_amplitude_attack(synth_t* synth, float attack) {
+    synth->pimpl->aenv.attack.sec = attack;
+    synth->pimpl->aenv.attack.smp = attack * synth->pimpl->sample_rate;
+}
+
+/**
+ * Get the amplitude attack time.
+ */
+float synth_get_amplitude_attack(synth_t* synth) {
+    return synth->pimpl->aenv.attack.sec;
+}
+
+/**
+ * Set the amplitude decay time. 
+ */
+void synth_set_amplitude_decay(synth_t* synth, float decay) {
+    synth->pimpl->aenv.decay.sec = decay;
+    synth->pimpl->aenv.decay.smp = decay * synth->pimpl->sample_rate;
+}
+
+/**
+ * Get the amplitude decay time.
+ */
+float synth_get_amplitude_decay(synth_t* synth) {
+    return synth->pimpl->aenv.decay.sec;
+}
+
+/**
+ * Set the amplitude sustain level.
+ */
+void synth_set_amplitude_sustain(synth_t* synth, float sustain) {
+    synth->pimpl->aenv.sustain = sustain;
+}
+
+/**
+ * Get the amplitude sustain level.
+ */
+float synth_get_amplitude_sustain(synth_t* synth) {
+    return synth->pimpl->aenv.sustain;
+}
+
+/**
+ * Set the amplitude release time.
+ */
+void synth_set_amplitude_release(synth_t* synth, float release) {
+    synth->pimpl->aenv.release.sec = release;
+    synth->pimpl->aenv.release.smp = release * synth->pimpl->sample_rate;
+}
+
+/**
+ * Get the amplitude release time.
+ */
+float synth_get_amplitude_release(synth_t* synth) {
+    return synth->pimpl->aenv.release.sec;
 }
 
 /**
