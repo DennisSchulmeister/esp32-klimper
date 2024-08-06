@@ -11,6 +11,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 #include "synth.h"
 
 struct sequencer_pimpl;
@@ -64,6 +65,19 @@ void sequencer_set_bpm(sequencer_t* sequencer, int bpm);
  * @returns Current beats-per-minute
  */
 int sequencer_get_bpm(sequencer_t* sequencer);
+
+/**
+ * Set play state to start or stop the sequencer.
+ * 
+ * @param sequencer Sequencer instance
+ * @param running Play state
+ */
+void sequencer_set_running(sequencer_t* sequencer, bool running);
+
+/**
+ * Get play state of the sequencer.
+ */
+bool sequencer_get_running(sequencer_t* sequencer);
 
 /**
  * Run the sequencer to create new events based on the time passed since the last call.

@@ -14,6 +14,7 @@
 #include <driver/gpio.h>
 #include <esp_log.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #include "audiohw.h"
 #include "synth.h"
@@ -64,6 +65,7 @@ void app_main(void) {
 
     sequencer = sequencer_new(&sequencer_config);
     sequencer_set_bpm(sequencer, 80);
+    sequencer_set_running(sequencer, true);
 
     // Initialize audio hardware and mixer task. This must happen last to avoid
     // using the DSP objects before they are initialized.

@@ -36,8 +36,9 @@ typedef enum synth_voice_state {
  */
 typedef struct synth_voice {
     int                 note;               // MIDI note number
-    float               pan;                // Panorama
     float               velocity;           // Velocity
+    float               pan;                // Panorama value
+    float               direction;          // Panorama change delta
     synth_voice_state_t state;              // Amplitude envelope state
 } synth_voice_t;
 
@@ -111,6 +112,8 @@ void synth_free(synth_t* synth) {
  * Set overall volume of the synthesizer.
  */
 void synth_set_volume(synth_t* synth, float volume)  {
+    ESP_LOGD(TAG, "Set volume to %f", volume);
+
     synth->pimpl->volume = volume;
 }
 
@@ -125,6 +128,8 @@ float synth_get_volume(synth_t* synth) {
  * Set the amplitude attack time.
  */
 void synth_set_amplitude_attack(synth_t* synth, float attack) {
+    ESP_LOGD(TAG, "Set amplitude attack to %f", attack);
+
     synth->pimpl->aenv.attack.sec = attack;
     synth->pimpl->aenv.attack.smp = attack * synth->pimpl->sample_rate;
 }
@@ -140,6 +145,8 @@ float synth_get_amplitude_attack(synth_t* synth) {
  * Set the amplitude decay time. 
  */
 void synth_set_amplitude_decay(synth_t* synth, float decay) {
+    ESP_LOGD(TAG, "Set amplitude decay to %f", decay);
+
     synth->pimpl->aenv.decay.sec = decay;
     synth->pimpl->aenv.decay.smp = decay * synth->pimpl->sample_rate;
 }
@@ -155,6 +162,8 @@ float synth_get_amplitude_decay(synth_t* synth) {
  * Set the amplitude sustain level.
  */
 void synth_set_amplitude_sustain(synth_t* synth, float sustain) {
+    ESP_LOGD(TAG, "Set amplitude sustain to %f", sustain);
+
     synth->pimpl->aenv.sustain = sustain;
 }
 
@@ -169,6 +178,8 @@ float synth_get_amplitude_sustain(synth_t* synth) {
  * Set the amplitude release time.
  */
 void synth_set_amplitude_release(synth_t* synth, float release) {
+    ESP_LOGD(TAG, "Set amplitude release to %f", release);
+
     synth->pimpl->aenv.release.sec = release;
     synth->pimpl->aenv.release.smp = release * synth->pimpl->sample_rate;
 }

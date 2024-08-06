@@ -9,7 +9,6 @@
  */
 
 #include "sequencer.h"
-#include "synth.h"
 
 #include <esp_log.h>
 #include <stdlib.h>
@@ -47,6 +46,7 @@ typedef struct sequencer_pimpl {
     int*             notes_available;                   // Array with available MIDI notes
     size_t           n_notes_available;                 // Number of available MIDI notes
     int              bpm;                               // Tempo in beats per minute
+    bool             running;                           // Play state (playing or stopped)
     int              durations[3];                      // Sample durations for quarter/eighth/sixteenth notes
     int              pause_remaining;                   // Number of samples until the next note is triggered
     sequencer_note_t notes_playing[N_NOTES_PLAYING];    // Currently played notes
@@ -107,6 +107,23 @@ int sequencer_get_bpm(sequencer_t* sequencer) {
 }
 
 /**
+ * Set play state to start or stop the sequencer.
+ */
+void sequencer_set_running(sequencer_t* sequencer, bool running) {
+    ESP_LOGD(TAG, "Set play state to %s", running ? "playing" : "stopped");
+
+    sequencer->pimpl->running = running;
+    sequencer->pimpl->pause_remaining = 0;
+}
+
+/**
+ * Get play state of the sequencer.
+ */
+bool sequencer_get_running(sequencer_t* sequencer) {
+    return sequencer->pimpl->running;
+}
+
+/**
  * Run the sequencer for another processing block.
  */
 void sequencer_process(sequencer_t* sequencer, size_t n_samples_passed) {
@@ -122,6 +139,8 @@ void sequencer_process(sequencer_t* sequencer, size_t n_samples_passed) {
     }
 
     // Pause sequencer between notes
+    if (!sequencer->pimpl->running) return;
+
     sequencer->pimpl->pause_remaining -= n_samples_passed;
     if (sequencer->pimpl->pause_remaining > 0) return;      // Signed int to avoid edge case at first call
 
