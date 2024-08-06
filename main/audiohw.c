@@ -66,8 +66,6 @@ void audiohw_init(audiohw_config_t* config) {
     i2s_channel_enable(tx_handle);
 
     // Print buffer and latency information
-    char char_buffer[100];
-
     i2s_chan_info_t channel_info = {};
     i2s_channel_get_info(tx_handle, &channel_info);
 
@@ -78,11 +76,8 @@ void audiohw_init(audiohw_config_t* config) {
         uint32_t n_frames = channel_info.total_dma_buf_size / channel_config.dma_desc_num / standard_config.slot_cfg.slot_mode / standard_config.slot_cfg.data_bit_width * 8;
         float latency_ms = 1000.0 * n_frames / standard_config.clk_cfg.sample_rate_hz;
 
-        sprintf(char_buffer, "I2S DMA Buffer...: %" PRIu32 " Bytes", channel_info.total_dma_buf_size);
-        ESP_LOGI(TAG, "%s", char_buffer);
-
-        sprintf(char_buffer, "I2S Latency......: %f ms", latency_ms);
-        ESP_LOGI(TAG, "%s", char_buffer);
+        ESP_LOGI(TAG, "I2S DMA Buffer...: %" PRIu32 " Bytes", channel_info.total_dma_buf_size);
+        ESP_LOGI(TAG, "I2S Latency......: %f ms", latency_ms);
     } else {
         // That should not happen!
         ESP_LOGE(TAG, "Cannot calculate I2S latency due to division by zero.");

@@ -63,10 +63,9 @@ void synth_free(synth_t* synth);
  * 
  * @param synth Synthesizer instance
  * @param note MIDI note number
- * @param pan Panorama (0 = left, 1 = right)
  * @param velocity Note velocity (0…1)
  */
-void synth_note_on(synth_t* synth, int note, float pan, float velocity);
+void synth_note_on(synth_t* synth, int note, float velocity);
 
 /**
  * Stop a currently playing note.
@@ -74,7 +73,7 @@ void synth_note_on(synth_t* synth, int note, float pan, float velocity);
  * @param synth Synthesizer instance
  * @param note MIDI note number
  */
-void synth_note_off(synth_t* synth, int note, float pan);
+void synth_note_off(synth_t* synth, int note);
 
 /**
  * Render a new block of audio with the currently set parameters and notes.

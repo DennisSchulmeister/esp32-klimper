@@ -41,7 +41,7 @@ void app_main(void) {
     // Create synthesizer
     synth_config_t synth_config = {
         .sample_rate = SAMPLE_RATE,
-        .polyphony   = 8,
+        .polyphony   = 32,
     };
 
     synth = synth_new(&synth_config);
@@ -59,8 +59,8 @@ void app_main(void) {
     };
 
     sequencer = sequencer_new(&sequencer_config);
+    sequencer_set_bpm(sequencer, 80);
 
-    sequencer->params.bpm     = 80;
     sequencer->params.n_notes = 8;
     sequencer->params.notes   = calloc(8, sizeof(int));
 

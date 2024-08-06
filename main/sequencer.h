@@ -19,7 +19,6 @@ struct sequencer_pimpl;
  * User-changeable parameters of the sequencer.
  */
 typedef struct sequencer_parameters {
-    int    bpm;                             // Tempo in beats per minute
     size_t n_notes;                         // Number of available MIDI notes
     int*   notes;                           // Array with available MIDI notes (not freed by `sequencer_free()`)
 } sequencer_parameters_t;
@@ -56,6 +55,14 @@ sequencer_t* sequencer_new(sequencer_config_t* config);
  * @param sequencer Sequencer instance
  */
 void sequencer_free(sequencer_t* sequencer);
+
+/**
+ * Change the musical tempo of the sequencer.
+ * 
+ * @param sequencer Sequencer instance
+ * @param bpm New beats-per-minute
+ */
+void sequencer_set_bpm(sequencer_t* sequencer, int bpm);
 
 /**
  * Run the sequencer to create new events based on the time passed since the last call.
