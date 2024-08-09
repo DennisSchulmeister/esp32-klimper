@@ -15,7 +15,7 @@
 #include <esp_log.h>                        // ESP_LOGx
 #include <stdbool.h>                        // bool, true, false
 
-#include "audiohw.h"
+#include "driver/audiohw.h"
 #include "synth.h"
 #include "sequencer.h"
 
