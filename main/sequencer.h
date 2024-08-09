@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdbool.h>
+#include <stddef.h>                         // size_t
+#include <stdbool.h>                        // bool, true, false
 #include "synth.h"
 
 struct sequencer_pimpl;
@@ -20,14 +20,14 @@ struct sequencer_pimpl;
  * A simple sequencer that triggers random notes from a given scale
  * on the synthesizer.
  */
-typedef struct sequencer {
+typedef struct {
     struct sequencer_pimpl* pimpl;          // Private implementation
 } sequencer_t;
 
 /**
  * Configuration parameters for the sequencer.
  */
-typedef struct sequencer_config {
+typedef struct {
     int      sample_rate;                   // Sample rate in Hz
     synth_t* synth;                         // The controlled synthesizer (not freed by `sequencer_free()`)
     int*     notes;                         // Array with available MIDI notes (will be copied)

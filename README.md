@@ -63,12 +63,14 @@ Software Architecture
 The overall design goal is to keep the code simple and easy to understand, yet performant enough
 to hopefully get acceptable real-time performance on the ESP32.
 
-The firmware is split into four modules:
+The firmware is split into a few modules:
 
 * `main.c`: Startup and glue code
 * `audiohw.c`: I²S initialization and interrupt handling
 * `synth.c`: A generic synthesizer to generate some sound
 * `sequencer.c`: Control logic that "plays" the synthesizer
+* `utils.c`: General utility functions
+* `dsp/*.c`: Elementary DSP building blocks
 
 `main.c` starts a "DSP task" that is woken up by the audio interrupt whenever a new chunk of audio
 must be produced. This task calls the sequencer and the synthesizer to fill a sample buffer that will
@@ -80,9 +82,8 @@ Audio buffers are left/right interleaved.
 
 Each module except `main.c` follows a semi-object-oriented pattern. There is always a main structure
 that needs to be created with `xyz_new()` and freed with `xyz_free()`. All other functions operate
-on that structure. The structure might contain a pointer to a private `xyz_pimpl` with private properties
-(pimpl = private implementation). Usually there is also a `xyz_config` structure for the constructor
-parameters, similar as in the Espressif IDF.
+on that structure. For simple objects the `xyz_new()` constructor function takes individual parameters.
+For more complex objects parameters are passed as a configuration object, similar as in Espressif IDF.
 
 Pointers given to a function are usually not stored by the function. Most of the time it is safe to allocate
 the objects on stack (e.g. the configuration objects) or free the pointer otherwise. The only exception is

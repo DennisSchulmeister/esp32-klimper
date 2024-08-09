@@ -10,21 +10,21 @@
 
 #pragma once
 
-#include <stddef.h>
+#include <stddef.h>                         // size_t
 
 struct synth_pimpl;
 
 /**
  * A very simple, polyphonic wavetable synthesizer. Nothing to write home about. :-)
  */
-typedef struct synth {
+typedef struct {
     struct synth_pimpl* pimpl;              // Private implementation
 } synth_t;
 
 /**
  * Configuration parameters for the synthesizer.
  */
-typedef struct synth_config {
+typedef struct {
     int sample_rate;                        // Sample rate in Hz
     int polyphony;                          // Maximum number of simultaneous voices
 } synth_config_t;
@@ -52,78 +52,6 @@ void synth_free(synth_t* synth);
  * @param volume Volume level [0…1]
  */
 void synth_set_volume(synth_t* synth, float volume);
-
-/**
- * Get overall volume of the synthesizer.
- * 
- * @param synth Synthesizer instance
- * @returns Volume level [0…1]
- */
-float synth_get_volume(synth_t* synth);
-
-/**
- * Set the amplitude attack time.
- * 
- * @param synth Synthesizer instance
- * @param attack Attack time in seconds
- */
-void synth_set_amplitude_attack(synth_t* synth, float attack);
-
-/**
- * Get the amplitude attack time.
- * 
- * @param synth Synthesizer instance
- * @returns Attack time in seconds
- */
-float synth_get_amplitude_attack(synth_t* synth);
-
-/**
- * Set the amplitude decay time. 
- * 
- * @param synth Synthesizer instance
- * @param decay Decay time in seconds
- */
-void synth_set_amplitude_decay(synth_t* synth, float decay);
-
-/**
- * Get the amplitude decay time.
- * 
- * @param synth Synthesizer instance
- * @returns Decay time in seconds
- */
-float synth_get_amplitude_decay(synth_t* synth);
-
-/**
- * Set the amplitude sustain level.
- * 
- * @param synth Synthesizer instance
- * @param sustain Sustain level [0…1]
- */
-void synth_set_amplitude_sustain(synth_t* synth, float sustain);
-
-/**
- * Get the amplitude sustain level.
- * 
- * @param synth Synthesizer instance
- * @returns Sustain level [0…1]
- */
-float synth_get_amplitude_sustain(synth_t* synth);
-
-/**
- * Set the amplitude release time.
- * 
- * @param synth Synthesizer instance
- * @param release Release time in seconds
- */
-void synth_set_amplitude_release(synth_t* synth, float release);
-
-/**
- * Get the amplitude release time.
- * 
- * @param synth Synthesizer instance
- * @returns Release time in seconds
- */
-float synth_get_amplitude_release(synth_t* synth);
 
 /**
  * Play a new note or re-trigger an already playing note of the same number.

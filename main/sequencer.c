@@ -10,9 +10,8 @@
 
 #include "sequencer.h"
 
-#include <esp_log.h>
-#include <stdlib.h>
-#include <string.h>
+#include <esp_log.h>                                    // ESP_LOGx
+#include <string.h>                                     // memcpy()
 
 static const char* TAG = "sequencer";                   // Logging tag
 
@@ -21,7 +20,7 @@ static const char* TAG = "sequencer";                   // Logging tag
 /**
  * Beat durations: Quarter, eighth, sixteenth notes
  */
-typedef enum sequencer_duration {
+typedef enum {
     QUARTER,
     EIGHTH,
     SIXTEENTH,
@@ -32,7 +31,7 @@ typedef enum sequencer_duration {
  * Played note as seen by the sequencer. This tracks the remaining playing time
  * of a triggered note until it will be stopped again.
  */
-typedef struct sequencer_note {
+typedef struct {
     int note;                                           // MIDI note number
     int samples_remaining;                              // Number of samples until the note is stopped
 } sequencer_note_t;

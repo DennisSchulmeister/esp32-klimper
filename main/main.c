@@ -8,13 +8,12 @@
  * License, or (at your option) any later version.
  */
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <portmacro.h>
-#include <driver/gpio.h>
-#include <esp_log.h>
-#include <stddef.h>
-#include <stdbool.h>
+#include <freertos/FreeRTOS.h>              // Common FreeRTOS (must come first)
+#include <freertos/task.h>                  // TaskHandle_t
+#include <portmacro.h>                      // spinlock_t
+#include <driver/gpio.h>                    // GPIO_NUM_xy
+#include <esp_log.h>                        // ESP_LOGx
+#include <stdbool.h>                        // bool, true, false
 
 #include "audiohw.h"
 #include "synth.h"
@@ -48,13 +47,13 @@ void app_main(void) {
     synth = synth_new(&synth_config);
 
     synth_set_volume(synth, 1.0);
-    synth_set_amplitude_attack (synth, 0.1);
-    synth_set_amplitude_decay  (synth, 0.3);
-    synth_set_amplitude_sustain(synth, 0.5);
-    synth_set_amplitude_release(synth, 0.5);
+    // synth_set_amplitude_attack (synth, 0.1);
+    // synth_set_amplitude_decay  (synth, 0.3);
+    // synth_set_amplitude_sustain(synth, 0.5);
+    // synth_set_amplitude_release(synth, 0.5);
 
     // Create sequencer
-    int notes[] = {48, 50, 52, 53, 55, 57, 59, 60};
+    int notes[] = {60, 62, 64, 65, 67, 69, 71, 72};
 
     sequencer_config_t sequencer_config = {
         .sample_rate = SAMPLE_RATE,

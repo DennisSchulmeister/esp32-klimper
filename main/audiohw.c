@@ -10,9 +10,8 @@
 
 #include "audiohw.h"
 
-#include <driver/i2s_std.h>
-#include <esp_log.h>
-#include <string.h>
+#include <driver/i2s_std.h>                     // i2s…()
+#include <esp_log.h>                            // ESP_LOGx
 
 static const char* TAG = "audiohw";             // Logging tag
 

@@ -10,16 +10,16 @@
 
 #pragma once
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <portmacro.h>
-#include <stdint.h>
+#include <freertos/FreeRTOS.h>              // Common FreeRTOS (must come first)
+#include <freertos/task.h>                  // TaskHandle_t
+#include <portmacro.h>                      // spinlock_t
+#include <stdint.h>                         // int16_t
 
 /**
  * Configuration parameters for audio output.
  */
-typedef struct audiohw_config {
-    int          sample_rate;               // Sample Rate in Hz
+typedef struct {
+    int          sample_rate;               // Sample rate in Hz
     size_t       n_samples;                 // Number of samples per buffer (do determine latency)
     int          i2s_lrc_io;                // I²S Left/Right Clock
     int          i2s_bck_io;                // I²S Bit Clock
@@ -33,7 +33,7 @@ typedef struct audiohw_config {
  * and how many audio samples to put. A pointer to this structure is passed
  * as "notification value" to the mixing task.
  */
-typedef struct audiohw_buffer {
+typedef struct {
     size_t   size;                          // Buffer size
     int16_t* data;                          // Transmit buffer
 } audiohw_buffer_t;
