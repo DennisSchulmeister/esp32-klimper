@@ -14,14 +14,50 @@
 #include <stdbool.h>                        // bool, true, false
 #include "synth.h"
 
-struct sequencer_pimpl;
+#define SEQUENCER_POLYPHONY (8)             // Worst-case: Four 16th-notes, 1/4 long = 4 notes
+
+/**
+ * Beat durations: Quarter, eighth, sixteenth notes
+ */
+typedef enum {
+    SEQUENCER_DURATION_QUARTER,
+    SEQUENCER_DURATION_EIGHTH,
+    SEQUENCER_DURATION_SIXTEENTH,
+    SEQUENCER_DURATION_MAX,                 // Dummy value to mark the end
+} sequencer_duration_t;
+
+/**
+ * Played note as seen by the sequencer. This tracks the remaining playing time
+ * of a triggered note until it will be stopped again.
+ */
+typedef struct {
+    int note;                               // MIDI note number
+    int samples_remaining;                  // Number of samples until the note is stopped
+} sequencer_note_t;
 
 /**
  * A simple sequencer that triggers random notes from a given scale
  * on the synthesizer.
  */
 typedef struct {
-    struct sequencer_pimpl* pimpl;          // Private implementation
+    struct {
+        synth_t* synth;                     // The controlled synthesizer (not freed)
+        int      bpm;                       // Tempo in beats per minute
+        bool     running;                   // Play state (playing or stopped)
+    } params;
+
+    struct {
+        int*   midi_notes;                  // Array with MIDI notes to choose from
+        size_t length;                      // Array length
+    } notes_available;
+
+    struct {
+        int sample_rate;                    // Sample rate in Hz
+        int durations[3];                   // Sample durations for quarter/eighth/sixteenth notes
+        int pause_remaining;                // Number of samples until the next note is triggered
+        
+        sequencer_note_t notes_playing[SEQUENCER_POLYPHONY];    // Currently played notes
+    } state;                                // Internal sequencer state
 } sequencer_t;
 
 /**
@@ -59,25 +95,12 @@ void sequencer_free(sequencer_t* sequencer);
 void sequencer_set_bpm(sequencer_t* sequencer, int bpm);
 
 /**
- * Get the musical tempo of the sequencer.
- * 
- * @param sequencer Sequencer instance
- * @returns Current beats-per-minute
- */
-int sequencer_get_bpm(sequencer_t* sequencer);
-
-/**
  * Set play state to start or stop the sequencer.
  * 
  * @param sequencer Sequencer instance
  * @param running Play state
  */
 void sequencer_set_running(sequencer_t* sequencer, bool running);
-
-/**
- * Get play state of the sequencer.
- */
-bool sequencer_get_running(sequencer_t* sequencer);
 
 /**
  * Run the sequencer to create new events based on the time passed since the last call.

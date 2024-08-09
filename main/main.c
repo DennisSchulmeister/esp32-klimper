@@ -16,6 +16,7 @@
 #include <stdbool.h>                        // bool, true, false
 
 #include "driver/audiohw.h"
+#include "dsp/wavetable.h"
 #include "synth.h"
 #include "sequencer.h"
 
@@ -31,26 +32,36 @@ spinlock_t dsp_task_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 float dsp_buffer[N_SAMPLES_BUFFER] = {};
 
-synth_t* synth = NULL;
-sequencer_t* sequencer = NULL;
+dsp_wavetable_t* wavetable = NULL;
+synth_t*         synth     = NULL;
+sequencer_t*     sequencer = NULL;
 
 /**
  * Application entry point
  */
 void app_main(void) {
+    // Create wavetable. Note that we are using cosine instead of sine so that we still
+    // get values at the Nyquist frequency (sample rate * 0.5). Because there the wavetable
+    // will only be read at the first and middle position which with a sine would be zero.
+    // See "The Audio Programming Book", p. 299
+    wavetable = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_cos);
+
     // Create synthesizer
     synth_config_t synth_config = {
         .sample_rate = SAMPLE_RATE,
         .polyphony   = 32,
+        .volume      = 1.0,
+        .wavetable   = wavetable,
+
+        .aenv = {
+            .attack  = 0.1,
+            .decay   = 0.3,
+            .sustain = 0.5,
+            .release = 0.5,
+        },
     };
 
     synth = synth_new(&synth_config);
-
-    synth_set_volume(synth, 1.0);
-    // synth_set_amplitude_attack (synth, 0.1);
-    // synth_set_amplitude_decay  (synth, 0.3);
-    // synth_set_amplitude_sustain(synth, 0.5);
-    // synth_set_amplitude_release(synth, 0.5);
 
     // Create sequencer
     int notes[] = {60, 62, 64, 65, 67, 69, 71, 72};

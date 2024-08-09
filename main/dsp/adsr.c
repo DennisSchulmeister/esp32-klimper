@@ -53,6 +53,24 @@ inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate) {
 }
 
 /**
+ * Shortcut to set all values at once.
+ */
+void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* values) {
+    adsr->envelope.attack.value     = 1.0;
+    adsr->envelope.attack.duration  = values->attack;
+
+    adsr->envelope.decay.value      = values->sustain;
+    adsr->envelope.decay.duration   = values->decay;
+
+    adsr->envelope.sustain          = values->sustain;
+
+    adsr->envelope.release.value    = 0.0;
+    adsr->envelope.release.duration = values->release;
+
+    dsp_adsr_recalc_increments(adsr, sample_rate);
+}
+
+/**
  * Set attack time.
  */
 void dsp_adsr_set_attack(dsp_adsr_t* adsr, int sample_rate, float duration) {
@@ -104,46 +122,4 @@ void dsp_adsr_trigger_attack(dsp_adsr_t* adsr) {
  */
 void dsp_adsr_trigger_release(dsp_adsr_t* adsr) {
     adsr->state.status = DSP_ADSR_RELEASE;
-}
-
-/**
- * Calculate next sample.
- */
-extern inline float dsp_adsr_tick(dsp_adsr_t* adsr) {
-    float value = adsr->state.value;
-
-    switch (adsr->state.status) {
-        case DSP_ADSR_ATTACK:
-            adsr->state.value += adsr->envelope.attack.increment;
-
-            if (adsr->state.value >= adsr->envelope.attack.value) {
-                adsr->state.status = DSP_ADSR_DECAY;
-                adsr->state.value  = adsr->envelope.attack.value;
-            }
-
-            break;
-        case DSP_ADSR_DECAY:
-            adsr->state.value += adsr->envelope.decay.increment;
-
-            if (adsr->state.value <= adsr->envelope.decay.value) {
-                adsr->state.status = DSP_ADSR_SUSTAIN;
-                adsr->state.value  = adsr->envelope.decay.value;
-            }
-
-            break;
-        case DSP_ADSR_RELEASE:
-            adsr->state.value += adsr->envelope.release.increment;
-
-            if (adsr->state.value <= 0) {
-                adsr->state.status = DSP_ADSR_STOPPED;
-                adsr->state.value  = 0;
-            }
-
-            break;
-        default:
-            // Suppress compiler error: Enumeration value not handled in switch
-            break;
-    }
-
-    return value;
 }

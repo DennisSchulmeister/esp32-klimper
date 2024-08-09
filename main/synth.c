@@ -17,30 +17,6 @@
 
 static const char* TAG = "synth";           // Logging tag
 
-
-/**
- * Internal state of a tone-generating voice.
- */
-typedef struct {
-    int                  note;              // MIDI note number
-    float                velocity;          // Velocity
-    float                pan;               // Panorama value
-    float                direction;         // Panorama change delta
-    // synth_voice_status_t status;            // Amplitude envelope status
-    // synth_osc_t          osc1;              // Oscillator 1 state
-} synth_voice_t;
-
-/**
- * Private properties of the synthesizer (pimpl idiom).
- */
-typedef struct synth_pimpl {
-    int            sample_rate;             // Sample rate in Hz
-    int            polyphony;               // Number of voices
-    synth_voice_t* voices;                  // Voices that actually create sound
-    float          volume;                  // Overall volume
-    // synth_adsr_t   aenv;                    // Amplitude envelope
-} synth_pimpl_t;
-
 /**
  * Create new synthesizer instance.
  */
@@ -49,10 +25,18 @@ synth_t* synth_new(synth_config_t* config) {
 
     synth_t* synth = calloc(1, sizeof(synth_t));
 
-    synth->pimpl = calloc(1, sizeof(synth_pimpl_t));
-    synth->pimpl->sample_rate = config->sample_rate;
-    synth->pimpl->polyphony   = config->polyphony;
-    synth->pimpl->voices      = calloc(config->polyphony, sizeof(synth_voice_t));
+    synth->params.volume    = config->volume;
+    synth_set_aenv_values(synth, config->aenv);
+
+    synth->state.sample_rate = config->sample_rate;
+    synth->state.polyphony   = config->polyphony;
+    synth->state.voices      = calloc(config->polyphony, sizeof(synth_voice_t));
+
+    for (int i = 0; i < config->polyphony; i++) {
+        synth->state.voices[i].oscil = dsp_oscil_new(config->wavetable);
+        synth->state.voices[i].aenv  = dsp_adsr_new();
+        dsp_adsr_set_values(synth->state.voices[i].aenv, config->sample_rate, &config->aenv);
+    }
 
     ESP_LOGD(TAG, "Created synthesizer instance %p", synth);
     
@@ -65,8 +49,12 @@ synth_t* synth_new(synth_config_t* config) {
 void synth_free(synth_t* synth) {
     ESP_LOGD(TAG, "Freeing synthesizer instance %p", synth);
 
-    free(synth->pimpl->voices);
-    free(synth->pimpl);
+    for (int i = 0; i < synth->state.polyphony; i++) {
+        free(synth->state.voices[i].oscil);
+        free(synth->state.voices[i].aenv);
+    }
+
+    free(synth->state.voices);
     free(synth);
 
 }
@@ -77,7 +65,18 @@ void synth_free(synth_t* synth) {
 void synth_set_volume(synth_t* synth, float volume)  {
     ESP_LOGD(TAG, "Set volume to %f", volume);
 
-    synth->pimpl->volume = volume;
+    synth->params.volume = volume;
+}
+
+/**
+ * Set parameters of the amplitude envelope generator.
+ */
+void synth_set_aenv_values(synth_t* synth, dsp_adsr_values_t aenv) {
+    synth->params.aenv = aenv;
+
+    for (int i = 0; i < synth->state.polyphony; i++) {
+        dsp_adsr_set_values(synth->state.voices[i].aenv, synth->state.sample_rate, &aenv);
+    }
 }
 
 /**

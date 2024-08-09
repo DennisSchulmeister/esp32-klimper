@@ -9,6 +9,7 @@
  */
 
 #pragma once
+#include <math.h>                           // sin(), cos(), …
 #include <stdlib.h>                         // size_t
 
 #define DSP_WAVETABLE_DEFAULT_LENGTH (512)
@@ -26,6 +27,9 @@ typedef struct {
  * Values a calculated for the interval [0 … TWO_PI].
  */
 typedef float (*dsp_wavetable_func_ptr)(float);
+
+float dsp_wavetable_sin(float x);
+float dsp_wavetable_cos(float x);
 
 /**
  * Create a new wavetable and fill it with values. Optionally add the given number
@@ -50,8 +54,16 @@ void dsp_wavetable_free(dsp_wavetable_t* wavetable);
  * least one guard point for this to work. Otherwise a garbage value will be read
  * at the end of the table.
  * 
+ * Algorithm from "The Audio Programming Book", p302ff.
+ * 
  * @param wavetable Wavetable instance
  * @param index Floating point index
  * @returns Linearly interpolated value
  */
-inline float dsp_wavetable_read2(dsp_wavetable_t* wavetable, float index);
+inline float dsp_wavetable_read2(dsp_wavetable_t* wavetable, float index) {
+    int   iindex = (int) index;
+    float value  = wavetable->samples[iindex];
+    float slope  = wavetable->samples[iindex + 1] - value;
+    
+    return value + (slope * (index - iindex));
+}

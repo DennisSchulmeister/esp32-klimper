@@ -32,6 +32,16 @@ typedef struct {
 } dsp_adsr_breakpoint_t;
 
 /**
+ * Data transfer structure for ADSR values.
+ */
+typedef struct {
+    float attack;                           // Attack time
+    float decay;                            // Decay time
+    float sustain;                          // Sustain value
+    float release;                          // Release time
+} dsp_adsr_values_t;
+
+/**
  * ADSR envelope generator
  */
 typedef struct {
@@ -59,6 +69,16 @@ dsp_adsr_t* dsp_adsr_new();
  * @param adsr ADSR envelope generator
  */
 void dsp_adsr_free(dsp_adsr_t* adsr);
+
+/**
+ * Shortcut to set all values at once. Also saves some processing cycles, because
+ * the value increments will only be recalculated once.
+ * 
+ * @param adsr ADSR envelope generator
+ * @param sample_rate Sample rate in Hz
+ * @param value ADSR values
+ */
+void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* values);
 
 /**
  * Set attack time.
@@ -112,4 +132,41 @@ void dsp_adsr_trigger_release(dsp_adsr_t* adsr);
  * Calculate next sample.
  * @param adsr ADSR envelope generator
  */
-inline float dsp_adsr_tick(dsp_adsr_t* adsr);
+inline float dsp_adsr_tick(dsp_adsr_t* adsr) {
+    float value = adsr->state.value;
+
+    switch (adsr->state.status) {
+        case DSP_ADSR_ATTACK:
+            adsr->state.value += adsr->envelope.attack.increment;
+
+            if (adsr->state.value >= adsr->envelope.attack.value) {
+                adsr->state.status = DSP_ADSR_DECAY;
+                adsr->state.value  = adsr->envelope.attack.value;
+            }
+
+            break;
+        case DSP_ADSR_DECAY:
+            adsr->state.value += adsr->envelope.decay.increment;
+
+            if (adsr->state.value <= adsr->envelope.decay.value) {
+                adsr->state.status = DSP_ADSR_SUSTAIN;
+                adsr->state.value  = adsr->envelope.decay.value;
+            }
+
+            break;
+        case DSP_ADSR_RELEASE:
+            adsr->state.value += adsr->envelope.release.increment;
+
+            if (adsr->state.value <= 0) {
+                adsr->state.status = DSP_ADSR_STOPPED;
+                adsr->state.value  = 0;
+            }
+
+            break;
+        default:
+            // Suppress compiler error: Enumeration value not handled in switch
+            break;
+    }
+
+    return value;
+}

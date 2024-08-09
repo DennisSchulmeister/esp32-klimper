@@ -10,23 +10,53 @@
 
 #pragma once
 
-#include <stddef.h>                         // size_t
+#include <stdbool.h>                        // bool, true, false
+#include "dsp/adsr.h"
+#include "dsp/oscil.h"
+#include "dsp/wavetable.h"
 
-struct synth_pimpl;
+/**
+ * Internal state of a tone-generating voice.
+ */
+typedef struct {
+    bool  active;                           // Whether the note is being heard
+    int   note;                             // MIDI note number
+    float velocity;                         // Velocity
+    float pan;                              // Panorama value
+    float direction;                        // Panorama change delta
+
+    dsp_oscil_t* oscil;                     // Wavetable oscillator
+    dsp_adsr_t*  aenv;                      // Amplitude envelope generator
+} synth_voice_t;
 
 /**
  * A very simple, polyphonic wavetable synthesizer. Nothing to write home about. :-)
  */
 typedef struct {
-    struct synth_pimpl* pimpl;              // Private implementation
+    struct {
+        float volume;                       // Overall volume
+
+        dsp_adsr_values_t aenv;             // Amplitude envelope generator parameters
+    } params;
+
+    struct {
+        int sample_rate;                    // Sample rate in Hz
+        int polyphony;                      // Number of voices
+
+        synth_voice_t* voices;              // Voices that actually create sound
+    } state;
 } synth_t;
 
 /**
  * Configuration parameters for the synthesizer.
  */
 typedef struct {
-    int sample_rate;                        // Sample rate in Hz
-    int polyphony;                          // Maximum number of simultaneous voices
+    int   sample_rate;                      // Sample rate in Hz
+    int   polyphony;                        // Maximum number of simultaneous voices
+    float volume;                           // Overall volume
+    
+    dsp_adsr_values_t aenv;                 // Amplitude envelope generator parameters
+    dsp_wavetable_t*  wavetable;            // Oscillator wavetable
 } synth_config_t;
 
 /**
@@ -52,6 +82,14 @@ void synth_free(synth_t* synth);
  * @param volume Volume level [0…1]
  */
 void synth_set_volume(synth_t* synth, float volume);
+
+/**
+ * Set parameters of the amplitude envelope generator.
+ * 
+ * @param synth Synthesizer instance
+ * @param aenv Attack, decay, sustain, release
+ */
+void synth_set_aenv_values(synth_t* synth, dsp_adsr_values_t aenv);
 
 /**
  * Play a new note or re-trigger an already playing note of the same number.

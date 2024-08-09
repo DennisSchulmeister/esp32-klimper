@@ -11,6 +11,9 @@
 #include "wavetable.h"
 #include "utils.h"                          // TWO_PI
 
+float dsp_wavetable_sin(float x) { return sin(x); }
+float dsp_wavetable_cos(float x) { return cos(x); }
+
 /**
  * Create a new wavetable and fill it with values.
  */
@@ -35,16 +38,4 @@ dsp_wavetable_t* dsp_wavetable_new(size_t length, size_t guards, dsp_wavetable_f
 void dsp_wavetable_free(dsp_wavetable_t* wavetable) {
     free(wavetable->samples);
     free(wavetable);
-}
-
-/**
- * Read wavetable with linear interpolation.
- * Algorithm from "The Audio Programming Book", p302ff.
- */
-extern inline float dsp_wavetable_read2(dsp_wavetable_t* wavetable, float index) {
-    int   iindex = (int) index;
-    float value  = wavetable->samples[iindex];
-    float slope  = wavetable->samples[iindex + 1] - value;
-    
-    return value + (slope * (index - iindex));
 }

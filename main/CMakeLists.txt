@@ -7,7 +7,6 @@ idf_component_register(
 
          "dsp/adsr.c"
          "dsp/oscil.c"
-         "dsp/pan.c"
          "dsp/utils.c"
          "dsp/wavetable.c"
          

@@ -15,42 +15,6 @@
 
 static const char* TAG = "sequencer";                   // Logging tag
 
-#define N_NOTES_PLAYING (8)                             // Worst-case: Four 16th-notes, 1/4 long = 4 notes
-
-/**
- * Beat durations: Quarter, eighth, sixteenth notes
- */
-typedef enum {
-    QUARTER,
-    EIGHTH,
-    SIXTEENTH,
-    MAX_DURATION,                                       // Dummy value to mark the end
-} sequencer_duration_t;
-
-/**
- * Played note as seen by the sequencer. This tracks the remaining playing time
- * of a triggered note until it will be stopped again.
- */
-typedef struct {
-    int note;                                           // MIDI note number
-    int samples_remaining;                              // Number of samples until the note is stopped
-} sequencer_note_t;
-
-/**
- * Private properties of the sequencer (pimpl idiom).
- */
-typedef struct sequencer_pimpl {
-    synth_t*         synth;                             // The controlled synthesizer (not freed by `sequencer_free()`)
-    int              sample_rate;                       // Sample rate in Hz
-    int*             notes_available;                   // Array with available MIDI notes
-    size_t           n_notes_available;                 // Number of available MIDI notes
-    int              bpm;                               // Tempo in beats per minute
-    bool             running;                           // Play state (playing or stopped)
-    int              durations[3];                      // Sample durations for quarter/eighth/sixteenth notes
-    int              pause_remaining;                   // Number of samples until the next note is triggered
-    sequencer_note_t notes_playing[N_NOTES_PLAYING];    // Currently played notes
-} sequencer_pimpl_t;
-
 /**
  * Create a new sequencer instance.
  */
@@ -59,13 +23,12 @@ sequencer_t* sequencer_new(sequencer_config_t* config) {
 
     sequencer_t* sequencer = calloc(1, sizeof(sequencer_t));
 
-    sequencer->pimpl = calloc(1, sizeof(sequencer_pimpl_t));
-    sequencer->pimpl->synth             = config->synth;
-    sequencer->pimpl->sample_rate       = config->sample_rate;
-    sequencer->pimpl->n_notes_available = config->n_notes;
+    sequencer->params.synth      = config->synth;
+    sequencer->state.sample_rate = config->sample_rate;
 
-    sequencer->pimpl->notes_available = malloc(config->n_notes * sizeof(int));
-    memcpy(sequencer->pimpl->notes_available, config->notes, config->n_notes * sizeof(int));
+    sequencer->notes_available.midi_notes = malloc(config->n_notes * sizeof(int));
+    sequencer->notes_available.length     = config->n_notes;
+    memcpy(sequencer->notes_available.midi_notes, config->notes, config->n_notes * sizeof(int));
 
     ESP_LOGD(TAG, "Created sequencer instance %p", sequencer);    
 
@@ -78,7 +41,7 @@ sequencer_t* sequencer_new(sequencer_config_t* config) {
 void sequencer_free(sequencer_t* sequencer) {
     ESP_LOGD(TAG, "Freeing sequencer instance %p", sequencer);
 
-    free(sequencer->pimpl);
+    free(sequencer->notes_available.midi_notes);
     free(sequencer);
 }
 
@@ -88,21 +51,14 @@ void sequencer_free(sequencer_t* sequencer) {
 void sequencer_set_bpm(sequencer_t* sequencer, int bpm) {
     ESP_LOGD(TAG, "Setting musical tempo to %i bpm.", bpm);
 
-    sequencer->pimpl->bpm = bpm;
-    sequencer->pimpl->durations[QUARTER]   = sequencer->pimpl->sample_rate * 60 / bpm;
-    sequencer->pimpl->durations[EIGHTH]    = sequencer->pimpl->durations[QUARTER] / 2;
-    sequencer->pimpl->durations[SIXTEENTH] = sequencer->pimpl->durations[EIGHTH]  / 2;
+    sequencer->params.bpm = bpm;
+    sequencer->state.durations[SEQUENCER_DURATION_QUARTER]   = sequencer->state.sample_rate * 60 / bpm;
+    sequencer->state.durations[SEQUENCER_DURATION_EIGHTH]    = sequencer->state.durations[SEQUENCER_DURATION_QUARTER] / 2;
+    sequencer->state.durations[SEQUENCER_DURATION_SIXTEENTH] = sequencer->state.durations[SEQUENCER_DURATION_EIGHTH]  / 2;
 
-    ESP_LOGD(TAG, "Duration of a 1/4  note: %i samples", sequencer->pimpl->durations[QUARTER]);
-    ESP_LOGD(TAG, "Duration of a 1/8  note: %i samples", sequencer->pimpl->durations[EIGHTH]);
-    ESP_LOGD(TAG, "Duration of a 1/16 note: %i samples", sequencer->pimpl->durations[SIXTEENTH]);
-}
-
-/**
- * Get the musical tempo of the sequencer.
- */
-int sequencer_get_bpm(sequencer_t* sequencer) {
-    return sequencer->pimpl->bpm;
+    ESP_LOGD(TAG, "Duration of a 1/4  note: %i samples", sequencer->state.durations[SEQUENCER_DURATION_QUARTER]);
+    ESP_LOGD(TAG, "Duration of a 1/8  note: %i samples", sequencer->state.durations[SEQUENCER_DURATION_EIGHTH]);
+    ESP_LOGD(TAG, "Duration of a 1/16 note: %i samples", sequencer->state.durations[SEQUENCER_DURATION_SIXTEENTH]);
 }
 
 /**
@@ -111,15 +67,8 @@ int sequencer_get_bpm(sequencer_t* sequencer) {
 void sequencer_set_running(sequencer_t* sequencer, bool running) {
     ESP_LOGD(TAG, "Set play state to %s", running ? "playing" : "stopped");
 
-    sequencer->pimpl->running = running;
-    sequencer->pimpl->pause_remaining = 0;
-}
-
-/**
- * Get play state of the sequencer.
- */
-bool sequencer_get_running(sequencer_t* sequencer) {
-    return sequencer->pimpl->running;
+    sequencer->params.running = running;
+    sequencer->state.pause_remaining = 0;
 }
 
 /**
@@ -127,42 +76,42 @@ bool sequencer_get_running(sequencer_t* sequencer) {
  */
 void sequencer_process(sequencer_t* sequencer, size_t n_samples_passed) {
     // Trigger note-off events
-    for (int i = 0; i < N_NOTES_PLAYING; i++) {
-        if (sequencer->pimpl->notes_playing[i].samples_remaining <= 0) continue;
-        sequencer->pimpl->notes_playing[i].samples_remaining -= n_samples_passed;
+    for (int i = 0; i < SEQUENCER_POLYPHONY; i++) {
+        if (sequencer->state.notes_playing[i].samples_remaining <= 0) continue;
+        sequencer->state.notes_playing[i].samples_remaining -= n_samples_passed;
 
-        if (sequencer->pimpl->notes_playing[i].samples_remaining <= 0) {
-            ESP_LOGD(TAG, "Triggering note-off for note %i", sequencer->pimpl->notes_playing[i].note);
-            synth_note_off(sequencer->pimpl->synth, sequencer->pimpl->notes_playing[i].note);
+        if (sequencer->state.notes_playing[i].samples_remaining <= 0) {
+            ESP_LOGD(TAG, "Triggering note-off for note %i", sequencer->state.notes_playing[i].note);
+            synth_note_off(sequencer->params.synth, sequencer->state.notes_playing[i].note);
         }
     }
 
     // Pause sequencer between notes
-    if (!sequencer->pimpl->running) return;
+    if (!sequencer->params.running) return;
 
-    sequencer->pimpl->pause_remaining -= n_samples_passed;
-    if (sequencer->pimpl->pause_remaining > 0) return;      // Signed int to avoid edge case at first call
+    sequencer->state.pause_remaining -= n_samples_passed;
+    if (sequencer->state.pause_remaining > 0) return;      // Signed int to avoid edge case at first call
 
-    sequencer_duration_t pause_duration = rand() % MAX_DURATION;
-    sequencer->pimpl->pause_remaining = sequencer->pimpl->durations[pause_duration];
+    sequencer_duration_t pause_duration = rand() % SEQUENCER_DURATION_MAX;
+    sequencer->state.pause_remaining = sequencer->state.durations[pause_duration];
 
-    ESP_LOGD(TAG, "Pause is over. New pause duration: %i samples", sequencer->pimpl->pause_remaining);
+    ESP_LOGD(TAG, "Pause is over. New pause duration: %i samples", sequencer->state.pause_remaining);
 
     // Play new note
-    for (int i = 0; i < N_NOTES_PLAYING; i++) {
-        if (sequencer->pimpl->notes_playing[i].samples_remaining > 0) continue;
+    for (int i = 0; i < SEQUENCER_POLYPHONY; i++) {
+        if (sequencer->state.notes_playing[i].samples_remaining > 0) continue;
 
-        int note_index = rand() % sequencer->pimpl->n_notes_available;
-        sequencer_duration_t note_duration = rand() % MAX_DURATION;
+        int note_index = rand() % sequencer->notes_available.length;
+        sequencer_duration_t note_duration = rand() % SEQUENCER_DURATION_MAX;
         float velocity = (rand() % 256) / 255.0;
 
-        sequencer->pimpl->notes_playing[i].note = sequencer->pimpl->notes_available[note_index];
-        sequencer->pimpl->notes_playing[i].samples_remaining = sequencer->pimpl->durations[note_duration];
+        sequencer->state.notes_playing[i].note = sequencer->notes_available.midi_notes[note_index];
+        sequencer->state.notes_playing[i].samples_remaining = sequencer->state.durations[note_duration];
 
         ESP_LOGD(TAG, "Triggering note-on for note %i with velocity %f and duration %i samples",
-                sequencer->pimpl->notes_playing[i].note, velocity, sequencer->pimpl->notes_playing[i].samples_remaining);
+                sequencer->state.notes_playing[i].note, velocity, sequencer->state.notes_playing[i].samples_remaining);
         
-        synth_note_on(sequencer->pimpl->synth, sequencer->pimpl->notes_playing[i].note, velocity);
+        synth_note_on(sequencer->params.synth, sequencer->state.notes_playing[i].note, velocity);
         break;
     }
 }

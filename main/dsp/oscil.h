@@ -50,7 +50,15 @@ void dsp_oscil_reinit(dsp_oscil_t* oscil, int sample_rate, float frequency, bool
 void dsp_oscil_free(dsp_oscil_t* oscil);
 
 /**
- * Calculate next sample.
+ * Calculate next sample. Algorithm from "The Audio Programming Book", p302ff.
  * @param oscil Oscillator instance
  */
-inline float dsp_oscil_tick(dsp_oscil_t* oscil);
+inline float dsp_oscil_tick(dsp_oscil_t* oscil) {
+    float sample = dsp_wavetable_read2(oscil->wavetable, oscil->index);
+
+    oscil->index += oscil->increment;
+    while (oscil->index >= oscil->wavetable->length) oscil->index -= oscil->wavetable->length;
+    while (oscil->index < 0) oscil->index += oscil->wavetable->length;
+
+    return sample;
+}
