@@ -25,8 +25,8 @@ typedef struct {
     float pan;                              // Panorama value
     float direction;                        // Panorama change delta
 
-    dsp_oscil_t* oscil;                     // Wavetable oscillator
-    dsp_adsr_t*  aenv;                      // Amplitude envelope generator
+    dsp_oscil_t* osc1;                      // Wavetable oscillator
+    dsp_adsr_t*  env1;                      // Amplitude envelope generator
 } synth_voice_t;
 
 /**
@@ -36,7 +36,7 @@ typedef struct {
     struct {
         float volume;                       // Overall volume
 
-        dsp_adsr_values_t aenv;             // Amplitude envelope generator parameters
+        dsp_adsr_values_t env1;             // Amplitude envelope generator parameters
     } params;
 
     struct {
@@ -55,7 +55,7 @@ typedef struct {
     int   polyphony;                        // Maximum number of simultaneous voices
     float volume;                           // Overall volume
     
-    dsp_adsr_values_t aenv;                 // Amplitude envelope generator parameters
+    dsp_adsr_values_t env1;                 // Amplitude envelope generator parameters
     dsp_wavetable_t*  wavetable;            // Oscillator wavetable
 } synth_config_t;
 
@@ -87,9 +87,9 @@ void synth_set_volume(synth_t* synth, float volume);
  * Set parameters of the amplitude envelope generator.
  * 
  * @param synth Synthesizer instance
- * @param aenv Attack, decay, sustain, release
+ * @param env1 Attack, decay, sustain, release
  */
-void synth_set_aenv_values(synth_t* synth, dsp_adsr_values_t aenv);
+void synth_set_env1_values(synth_t* synth, dsp_adsr_values_t env1);
 
 /**
  * Play a new note or re-trigger an already playing note of the same number.

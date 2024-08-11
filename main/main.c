@@ -54,7 +54,7 @@ void app_main(void) {
         .volume      = 1.0,
         .wavetable   = wavetable,
 
-        .aenv = {
+        .env1 = {
             .attack  = 0.1,
             .decay   = 0.3,
             .sustain = 0.5,
