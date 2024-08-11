@@ -53,7 +53,7 @@ void dsp_oscil_free(dsp_oscil_t* oscil);
  * Calculate next sample. Algorithm from "The Audio Programming Book", p302ff.
  * @param oscil Oscillator instance
  */
-inline float dsp_oscil_tick(dsp_oscil_t* oscil) {
+static inline float dsp_oscil_tick(dsp_oscil_t* oscil) {
     float sample = dsp_wavetable_read2(oscil->wavetable, oscil->index);
 
     oscil->index += oscil->increment;

@@ -132,7 +132,7 @@ void dsp_adsr_trigger_release(dsp_adsr_t* adsr);
  * Calculate next sample.
  * @param adsr ADSR envelope generator
  */
-inline float dsp_adsr_tick(dsp_adsr_t* adsr) {
+static inline float dsp_adsr_tick(dsp_adsr_t* adsr) {
     float value = adsr->state.value;
 
     switch (adsr->state.status) {

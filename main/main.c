@@ -22,19 +22,20 @@
 
 // DSP task: Called by the audio hardware to generate new audio
 void dsp_task(void* parameters);
-TaskHandle_t dsp_task_handle = NULL;
-spinlock_t dsp_task_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+static TaskHandle_t dsp_task_handle = NULL;
+static spinlock_t dsp_task_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // DSP Stuff
 #define SAMPLE_RATE      (44100)
 #define N_SAMPLES_BUFFER (880)              // 440 Frames (two samples each for stereo) = 10ms audio latency
 #define N_SAMPLES_CYCLE  (220)              // 10ms / 4 = 2ms timing accuracy (must divide the sample buffer by an integer!)
 
-float dsp_buffer[N_SAMPLES_BUFFER] = {};
+static float dsp_buffer[N_SAMPLES_BUFFER] = {};
 
-dsp_wavetable_t* wavetable = NULL;
-synth_t*         synth     = NULL;
-sequencer_t*     sequencer = NULL;
+static dsp_wavetable_t* wavetable = NULL;
+static synth_t*         synth     = NULL;
+static sequencer_t*     sequencer = NULL;
 
 /**
  * Application entry point

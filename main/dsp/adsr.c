@@ -36,7 +36,7 @@ void dsp_adsr_free(dsp_adsr_t* adsr) {
  * @param adsr ADSR envelope generator instance
  * @param sample_rate Sample rate in Hz
  */
-inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate) {
+static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate) {
     float delta, nsmpl;
 
     delta = adsr->envelope.attack.value - adsr->envelope.release.value;

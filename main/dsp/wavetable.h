@@ -60,7 +60,7 @@ void dsp_wavetable_free(dsp_wavetable_t* wavetable);
  * @param index Floating point index
  * @returns Linearly interpolated value
  */
-inline float dsp_wavetable_read2(dsp_wavetable_t* wavetable, float index) {
+static inline float dsp_wavetable_read2(dsp_wavetable_t* wavetable, float index) {
     int   iindex = (int) index;
     float value  = wavetable->samples[iindex];
     float slope  = wavetable->samples[iindex + 1] - value;
