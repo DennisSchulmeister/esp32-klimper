@@ -112,6 +112,10 @@ void dsp_task(void* parameters) {
     while (true) {
         audiohw_buffer_t* tx_buffer = (audiohw_buffer_t*) ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+        for (size_t i = 0; i < N_SAMPLES_BUFFER; i++) {
+            dsp_buffer[i] = 0.0f;
+        }
+
         for (size_t n_samples_processed = 0; n_samples_processed < N_SAMPLES_BUFFER; n_samples_processed += N_SAMPLES_CYCLE) {
             sequencer_process(sequencer, N_SAMPLES_CYCLE);
             synth_process(synth, dsp_buffer + n_samples_processed, N_SAMPLES_CYCLE);

@@ -14,6 +14,7 @@
 #include <float.h>                          // FLT_MAX
 #include <stdlib.h>                         // calloc(), malloc(), free()
 #include <math.h>                           // cos()
+#include "dsp/pan.h"                        // dsp_pan()
 #include "dsp/utils.h"                      // mtof()
 
 static const char* TAG = "synth";           // Logging tag
@@ -38,6 +39,8 @@ synth_t* synth_new(synth_config_t* config) {
         synth->state.voices[i].env1 = dsp_adsr_new();
         dsp_adsr_set_values(synth->state.voices[i].env1, config->sample_rate, &config->env1);
     }
+
+    dsp_pan_init();
 
     ESP_LOGD(TAG, "Created synthesizer instance %p", synth);
     
@@ -112,6 +115,10 @@ void synth_note_on(synth_t* synth, int note, float velocity) {
     // Trigger envelope generator
     synth_voice_t* voice = retrigger ? retrigger : free_voice ? free_voice : steal_voice;
     dsp_adsr_trigger_attack(voice->env1);
+
+    // Set random pan and pan directory
+    voice->pan = ((rand() % 512) / 255.0) - 1.0;
+    voice->direction = ((rand() % 64) / 31.0) - 1.0;
 }
 
 /**
@@ -130,7 +137,33 @@ void synth_note_off(synth_t* synth, int note) {
 }
 
 /**
- * Render next audio block.
+ * Render next audio block. This calls the different DSP methods to synthesize the sound
+ * and updates each voice's active flag based on its envelope generator status.
  */
 void synth_process(synth_t* synth, float* audio_buffer, size_t length) {
+    for (size_t i = 0; i < length; i += 2) {
+        for (int j = 0; j < synth->state.polyphony; j++) {
+            synth_voice_t* voice = &synth->state.voices[j];
+            
+            // Update control parameters of the voice
+            voice->pan += voice->direction;
+        
+            if (voice->pan > 1.0 || voice->pan < -1.0) {
+                voice->direction *= -1.0;
+                voice->pan = (voice->pan > 1.0) ? 2.0 - voice->pan : -2.0 - voice->pan;
+            }
+
+            // Mix next sample into the output buffer
+            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1);
+            float left, right;
+
+            dsp_pan_stereo(sample, voice->pan, &left, &right);
+
+            audio_buffer[i    ] += left;
+            audio_buffer[i + 1] += right;
+
+            // Update active flag of the voice
+            voice->active = voice->env1->state.status != DSP_ADSR_STOPPED;
+        }
+    }
 }
