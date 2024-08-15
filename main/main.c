@@ -92,7 +92,7 @@ void app_main(void) {
     audiohw_config_t audiohw_config = {
         .sample_rate = SAMPLE_RATE,
         .n_samples   = N_SAMPLES_BUFFER,
-        .i2s_mck_io  = GPIO_NUM_1,  // Only GPIO 0/1/3 allowed, but GPIO1 = TX0!
+        .i2s_mck_io  = I2S_GPIO_UNUSED,  // Only GPIO 0/1/3 allowed, but GPIO1 = TX0!
         .i2s_lrc_io  = GPIO_NUM_5,
         .i2s_bck_io  = GPIO_NUM_18,
         .i2s_dout_io = GPIO_NUM_19,

@@ -116,7 +116,7 @@ void synth_note_on(synth_t* synth, int note, float velocity) {
     synth_voice_t* voice = retrigger ? retrigger : free_voice ? free_voice : steal_voice;
 
     voice->note = note;
-    dsp_oscil_reinit(voice->osc1, synth->state.sample_rate, mtof(note), true);
+    dsp_oscil_reinit(voice->osc1, synth->state.sample_rate, mtof(note), false);
     dsp_adsr_trigger_attack(voice->env1);
 
     // Set random pan and pan directory
@@ -149,7 +149,7 @@ void synth_process(synth_t* synth, float* audio_buffer, size_t length) {
         for (int j = 0; j < synth->state.polyphony; j++) {
             synth_voice_t* voice = &synth->state.voices[j];
 
-            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * 0.25f;
+            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * 0.1f;
             float left, right;
 
             dsp_pan_stereo(sample, voice->pan, &left, &right);

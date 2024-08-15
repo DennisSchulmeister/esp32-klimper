@@ -29,6 +29,10 @@ dsp_wavetable_t* dsp_wavetable_new(size_t length, size_t guards, dsp_wavetable_f
         wavetable->samples[i] = func(i * incr);
     }
 
+    for (int i = 0; i < guards; i++) {
+        wavetable->samples[length + i] = wavetable->samples[i];
+    }
+
     return wavetable;
 }
 
