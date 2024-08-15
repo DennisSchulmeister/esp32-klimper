@@ -11,7 +11,6 @@
 #include "pan.h"
 
 bool             dsp_pan_initialized = false;
-float            dsp_pan_const       = 0.0;
 dsp_wavetable_t* dsp_pan_wt_cos      = NULL;
 dsp_wavetable_t* dsp_pan_wt_sin      = NULL;
 
@@ -21,8 +20,6 @@ dsp_wavetable_t* dsp_pan_wt_sin      = NULL;
 void dsp_pan_init() {
     if (dsp_pan_initialized) return;
     dsp_pan_initialized = true;
-
-    dsp_pan_const = sqrt(2) * 0.5;
 
     dsp_pan_wt_cos = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_cos);
     dsp_pan_wt_sin = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_sin);

@@ -14,7 +14,7 @@
 #include <driver/gpio.h>                    // GPIO_NUM_xy
 #include <esp_log.h>                        // ESP_LOGx
 #include <stdbool.h>                        // bool, true, false
-
+#include <driver/i2s_std.h>                 // I2S_GPIO_UNUSED
 #include "driver/audiohw.h"
 #include "dsp/wavetable.h"
 #include "synth.h"
@@ -24,7 +24,6 @@
 void dsp_task(void* parameters);
 
 static TaskHandle_t dsp_task_handle = NULL;
-static spinlock_t dsp_task_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // DSP Stuff
 #define SAMPLE_RATE      (44100)
@@ -93,11 +92,11 @@ void app_main(void) {
     audiohw_config_t audiohw_config = {
         .sample_rate = SAMPLE_RATE,
         .n_samples   = N_SAMPLES_BUFFER,
-        .i2s_lrc_io  = GPIO_NUM_25,
-        .i2s_bck_io  = GPIO_NUM_26,
-        .i2s_dout_io = GPIO_NUM_27,
+        .i2s_mck_io  = GPIO_NUM_1,  // Only GPIO 0/1/3 allowed, but GPIO1 = TX0!
+        .i2s_lrc_io  = GPIO_NUM_5,
+        .i2s_bck_io  = GPIO_NUM_18,
+        .i2s_dout_io = GPIO_NUM_19,
         .dsp_task    = dsp_task_handle,
-        .spinlock    = &dsp_task_spinlock,
     };
 
     audiohw_init(&audiohw_config);
@@ -110,7 +109,7 @@ void app_main(void) {
  */
 void dsp_task(void* parameters) {
     while (true) {
-        audiohw_buffer_t* tx_buffer = (audiohw_buffer_t*) ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        audiohw_buffer_t tx_buffer = *(audiohw_buffer_t*) ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         for (size_t i = 0; i < N_SAMPLES_BUFFER; i++) {
             dsp_buffer[i] = 0.0f;
@@ -121,15 +120,16 @@ void dsp_task(void* parameters) {
             synth_process(synth, dsp_buffer + n_samples_processed, N_SAMPLES_CYCLE);
         }
 
-        taskENTER_CRITICAL(&dsp_task_spinlock);
-        
-        for (int i = 0; (i < N_SAMPLES_BUFFER) && (i < tx_buffer->size); i++) {
+        for (int i = 0; (i < N_SAMPLES_BUFFER) && (i < tx_buffer.size); i++) {
             // NOTE: The assumption here is that the buffer provided by the audio hardware has the
             // same size as the DSP buffer used here. There is a maximum limit of how big a DMA buffer
             // can be on the ESP32. But we assume that as real-time application we are below that limit.
-            tx_buffer->data[i] = (int16_t) (32768 * dsp_buffer[i]);
-        }
+            float sample = dsp_buffer[i];
+            
+            if (sample < -1.0f) sample = -1.0f;
+            else if (sample > 1.0f) sample = 1.0f;
 
-        taskEXIT_CRITICAL(&dsp_task_spinlock);
+            tx_buffer.data[i] = (int16_t) (roundf(32767.0f * sample));
+        }
     }
 }

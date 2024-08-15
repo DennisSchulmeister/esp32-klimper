@@ -18,7 +18,6 @@ static const char* TAG = "audiohw";             // Logging tag
 static bool i2s_isr_on_sent(i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx);
 
 static TaskHandle_t dsp_task;                   // DSP task to notify
-static spinlock_t* spinlock;                    // Spinlock for critical section
 static audiohw_buffer_t audiohw_buffer = {};    // Buffer information passed to mixer task
 static i2s_chan_handle_t tx_handle;             // I²S Transmit Handle
 
@@ -27,7 +26,6 @@ static i2s_chan_handle_t tx_handle;             // I²S Transmit Handle
  */
 void audiohw_init(audiohw_config_t* config) {
     dsp_task = config->dsp_task;
-    spinlock = config->spinlock;
 
     i2s_chan_config_t channel_config = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER); 
     channel_config.auto_clear_before_cb = true;
@@ -41,7 +39,7 @@ void audiohw_init(audiohw_config_t* config) {
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
 
         .gpio_cfg = {
-            .mclk = I2S_GPIO_UNUSED,
+            .mclk = config->i2s_mck_io,
             .bclk = config->i2s_bck_io,
             .ws   = config->i2s_lrc_io,
             .dout = config->i2s_dout_io,
@@ -87,21 +85,18 @@ void audiohw_init(audiohw_config_t* config) {
  * ISR being triggered automatically when new audio data must be created.
  */
 static IRAM_ATTR bool i2s_isr_on_sent(i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx) {
-    taskENTER_CRITICAL(spinlock);
     audiohw_buffer.data = event->dma_buf;
     audiohw_buffer.size = event->size;
-    taskEXIT_CRITICAL(spinlock);
-
+    
     BaseType_t higherPriorityTaskWoken = pdFALSE;
-
-    xTaskNotifyAndQueryFromISR(
+    
+    xTaskNotifyFromISR(
         /* xTaskToNotify            */ dsp_task,
         /* ulValue                  */ (uint32_t) &audiohw_buffer,
         /* eAction                  */ eSetValueWithOverwrite,
-        /* pulPreviousNotifyValue   */ NULL,
         /* xHigherPriorityTaskWoken */ &higherPriorityTaskWoken 
     );
-
+    
     // See: https://www.freertos.org/RTOS_Task_Notification_As_Binary_Semaphore.html
     // Trigger immediate context switch if needed to return to the highest priority task
     portYIELD_FROM_ISR(higherPriorityTaskWoken);

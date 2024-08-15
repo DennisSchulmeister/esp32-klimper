@@ -157,9 +157,9 @@ static inline float dsp_adsr_tick(dsp_adsr_t* adsr) {
         case DSP_ADSR_RELEASE:
             adsr->state.value += adsr->envelope.release.increment;
 
-            if (adsr->state.value <= 0) {
+            if (adsr->state.value <= 0.0f) {
                 adsr->state.status = DSP_ADSR_STOPPED;
-                adsr->state.value  = 0;
+                adsr->state.value  = 0.0f;
             }
 
             break;

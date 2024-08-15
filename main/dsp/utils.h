@@ -11,11 +11,15 @@
 #pragma once
 
 #ifndef PI
-    #define PI (3.14159265)
+    #define PI (3.14159265f)
 #endif
 
 #ifndef TWO_PI
-    #define TWO_PI (6.2831853)
+    #define TWO_PI (6.2831853f)
+#endif
+
+#ifndef HALF_PI
+    #define HALF_PI (1.5707963f)
 #endif
 
 /**

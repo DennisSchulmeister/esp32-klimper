@@ -11,11 +11,9 @@
 #pragma once
 
 #include <stdbool.h>                        // bool, true, false
-#include <math.h>                           // cos(), sin(), sqrt()
 #include "wavetable.h"                      // wavetable_t
 
 extern bool             dsp_pan_initialized;
-extern float            dsp_pan_const;
 extern dsp_wavetable_t* dsp_pan_wt_cos;
 extern dsp_wavetable_t* dsp_pan_wt_sin;
 
@@ -29,7 +27,7 @@ void dsp_pan_init();
 /**
  * Apply equal-power pan law to the given sample. The panning value ranges from
  * minus one to one from left to right. Algorithm from "The Audio Programming Book",
- * p.234ff and changed to use pre-calculated wave tables.
+ * p.234ff, simplified and changed to use pre-calculated wave tables.
  * 
  * @param sample Input sample
  * @param pan Pan value [-1 … 1]
@@ -37,9 +35,8 @@ void dsp_pan_init();
  * @param right [out] Right output sample
  */
 static inline void dsp_pan_stereo(float sample, float pan, float* left, float* right) {
-    float cos_value = dsp_wavetable_read2(dsp_pan_wt_cos, pan);
-    float sin_value = dsp_wavetable_read2(dsp_pan_wt_sin, pan);
+    float index = (pan + 1.0f) * 0.125f * DSP_WAVETABLE_DEFAULT_LENGTH;
 
-    *left  = dsp_pan_const * (cos_value + sin_value);
-    *right = dsp_pan_const * (cos_value - sin_value);
+    *left  = sample * dsp_wavetable_read2(dsp_pan_wt_cos, index);
+    *right = sample * dsp_wavetable_read2(dsp_pan_wt_sin, index);
 }

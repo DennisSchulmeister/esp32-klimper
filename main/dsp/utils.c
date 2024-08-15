@@ -13,8 +13,8 @@
 #include <math.h>                                   // pow()
 #include <stdbool.h>                                // bool, true, false
 
-static float equal_tuning_ratio = 1.059463094;      // pow(2, 1/12.0)
-static float equal_tuning_c0    = 8.175798916;      // 220.0 * pow(ratio, 3) * pow(0.5, 5);
+static float equal_tuning_ratio = 1.059463094f;     // pow(2, 1/12.0)
+static float equal_tuning_c0    = 8.175798916f;     // 220.0 * pow(ratio, 3) * pow(0.5, 5);
 
 /**
  * Convert MIDI note number to frequency in Hz. Algorithm adapted from

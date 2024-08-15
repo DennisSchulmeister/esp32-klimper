@@ -56,7 +56,7 @@ static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate)
  * Shortcut to set all values at once.
  */
 void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* values) {
-    adsr->envelope.attack.value     = 1.0;
+    adsr->envelope.attack.value     = 1.0f;
     adsr->envelope.attack.duration  = values->attack;
 
     adsr->envelope.decay.value      = values->sustain;
@@ -64,7 +64,7 @@ void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* v
 
     adsr->envelope.sustain          = values->sustain;
 
-    adsr->envelope.release.value    = 0.0;
+    adsr->envelope.release.value    = 0.0f;
     adsr->envelope.release.duration = values->release;
 
     dsp_adsr_recalc_increments(adsr, sample_rate);
@@ -74,7 +74,7 @@ void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* v
  * Set attack time.
  */
 void dsp_adsr_set_attack(dsp_adsr_t* adsr, int sample_rate, float duration) {
-    adsr->envelope.attack.value    = 1.0;
+    adsr->envelope.attack.value    = 1.0f;
     adsr->envelope.attack.duration = duration;
 
     dsp_adsr_recalc_increments(adsr, sample_rate);
@@ -104,7 +104,7 @@ void dsp_adsr_set_sustain(dsp_adsr_t* adsr, int sample_rate, float level) {
  * Set release time.
  */
 void dsp_adsr_set_release(dsp_adsr_t* adsr, int sample_rate, float duration) {
-    adsr->envelope.release.value    = 0.0;
+    adsr->envelope.release.value    = 0.0f;
     adsr->envelope.release.duration = duration;
 
     dsp_adsr_recalc_increments(adsr, sample_rate);

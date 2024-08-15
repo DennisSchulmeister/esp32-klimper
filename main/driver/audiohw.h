@@ -12,7 +12,6 @@
 
 #include <freertos/FreeRTOS.h>              // Common FreeRTOS (must come first)
 #include <freertos/task.h>                  // TaskHandle_t
-#include <portmacro.h>                      // spinlock_t
 #include <stdint.h>                         // int16_t
 
 /**
@@ -21,11 +20,11 @@
 typedef struct {
     int          sample_rate;               // Sample rate in Hz
     size_t       n_samples;                 // Number of samples per buffer (do determine latency)
-    int          i2s_lrc_io;                // I²S Left/Right Clock
+    int          i2s_mck_io;                // I²S Master Clock
     int          i2s_bck_io;                // I²S Bit Clock
+    int          i2s_lrc_io;                // I²S Left/Right Clock
     int          i2s_dout_io;               // I²S Data Output
     TaskHandle_t dsp_task;                  // DSP Task
-    spinlock_t*  spinlock;                  // Spinlock for Mixer Task
 } audiohw_config_t;
 
 /**

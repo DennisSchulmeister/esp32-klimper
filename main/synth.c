@@ -104,7 +104,7 @@ void synth_note_on(synth_t* synth, int note, float velocity) {
             retrigger = voice;
         }
 
-        if (voice->active) {
+        if (!voice->active) {
             free_voice = voice;
         } else if (amp < steal_amp) {
             steal_voice = voice;
@@ -114,11 +114,14 @@ void synth_note_on(synth_t* synth, int note, float velocity) {
 
     // Trigger envelope generator
     synth_voice_t* voice = retrigger ? retrigger : free_voice ? free_voice : steal_voice;
+
+    voice->note = note;
+    dsp_oscil_reinit(voice->osc1, synth->state.sample_rate, mtof(note), true);
     dsp_adsr_trigger_attack(voice->env1);
 
     // Set random pan and pan directory
-    voice->pan = ((rand() % 512) / 255.0) - 1.0;
-    voice->direction = ((rand() % 64) / 31.0) - 1.0;
+    voice->pan = ((rand() % 512) / 255.0) - 1.0f;
+    // voice->direction = (((rand() % 512) / 255.0) - 1.0) * 0.001f;
 }
 
 /**
@@ -141,29 +144,34 @@ void synth_note_off(synth_t* synth, int note) {
  * and updates each voice's active flag based on its envelope generator status.
  */
 void synth_process(synth_t* synth, float* audio_buffer, size_t length) {
+    // Mix next samples into the output buffer
     for (size_t i = 0; i < length; i += 2) {
         for (int j = 0; j < synth->state.polyphony; j++) {
             synth_voice_t* voice = &synth->state.voices[j];
-            
-            // Update control parameters of the voice
-            voice->pan += voice->direction;
-        
-            if (voice->pan > 1.0 || voice->pan < -1.0) {
-                voice->direction *= -1.0;
-                voice->pan = (voice->pan > 1.0) ? 2.0 - voice->pan : -2.0 - voice->pan;
-            }
 
-            // Mix next sample into the output buffer
-            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1);
+            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * 0.25f;
             float left, right;
 
             dsp_pan_stereo(sample, voice->pan, &left, &right);
 
             audio_buffer[i    ] += left;
             audio_buffer[i + 1] += right;
-
-            // Update active flag of the voice
-            voice->active = voice->env1->state.status != DSP_ADSR_STOPPED;
         }
+    }
+
+    // Update status and control parameters of the voice
+    for (int j = 0; j < synth->state.polyphony; j++) {
+        synth_voice_t* voice = &synth->state.voices[j];
+
+        voice->active = voice->env1->state.status != DSP_ADSR_STOPPED;
+        // voice->pan += voice->direction;
+        // 
+        // if (voice->pan > 1.0f) {
+        //     voice->direction *= -1.0f;
+        //     voice->pan = 2.0f - voice->pan;
+        // } else if (voice->pan < -1.0f) {
+        //     voice->direction *= -1.0f;
+        //     voice->pan = -2.0f - voice->pan;
+        // }
     }
 }
