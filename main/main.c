@@ -93,9 +93,9 @@ void app_main(void) {
         .sample_rate = SAMPLE_RATE,
         .n_samples   = N_SAMPLES_BUFFER,
         .i2s_mck_io  = I2S_GPIO_UNUSED,  // Only GPIO 0/1/3 allowed, but GPIO1 = TX0!
-        .i2s_lrc_io  = GPIO_NUM_5,
-        .i2s_bck_io  = GPIO_NUM_18,
-        .i2s_dout_io = GPIO_NUM_19,
+        .i2s_lrc_io  = GPIO_NUM_25,
+        .i2s_bck_io  = GPIO_NUM_27,
+        .i2s_dout_io = GPIO_NUM_26,
         .dsp_task    = dsp_task_handle,
     };
 

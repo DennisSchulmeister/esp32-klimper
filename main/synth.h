@@ -22,11 +22,11 @@ typedef struct {
     bool  active;                           // Whether the note is being heard
     int   note;                             // MIDI note number
     float velocity;                         // Velocity
-    float pan;                              // Panorama value
     float direction;                        // Panorama change delta
 
     dsp_oscil_t* osc1;                      // Wavetable oscillator
     dsp_adsr_t*  env1;                      // Amplitude envelope generator
+    dsp_oscil_t* lfo1;                      // LFO hard-wired to panorama
 } synth_voice_t;
 
 /**
@@ -40,8 +40,9 @@ typedef struct {
     } params;
 
     struct {
-        int sample_rate;                    // Sample rate in Hz
-        int polyphony;                      // Number of voices
+        int   sample_rate;                  // Sample rate in Hz
+        int   polyphony;                    // Number of voices
+        float gain_staging;                 // Gain factor to avoid clipping
 
         synth_voice_t* voices;              // Voices that actually create sound
     } state;

@@ -30,14 +30,19 @@ synth_t* synth_new(synth_config_t* config) {
     synth->params.volume    = config->volume;
     synth_set_env1_values(synth, config->env1);
 
-    synth->state.sample_rate = config->sample_rate;
-    synth->state.polyphony   = config->polyphony;
-    synth->state.voices      = calloc(config->polyphony, sizeof(synth_voice_t));
+    synth->state.sample_rate  = config->sample_rate;
+    synth->state.polyphony    = config->polyphony;
+    synth->state.gain_staging = 1.0f / config->polyphony;
+    synth->state.voices       = calloc(config->polyphony, sizeof(synth_voice_t));
 
     for (int i = 0; i < config->polyphony; i++) {
         synth->state.voices[i].osc1 = dsp_oscil_new(config->wavetable);
         synth->state.voices[i].env1 = dsp_adsr_new();
+        synth->state.voices[i].lfo1 = dsp_oscil_new(config->wavetable);
         dsp_adsr_set_values(synth->state.voices[i].env1, config->sample_rate, &config->env1);
+
+        float lfo_freq = rand() % 256 / 255.0f * 3.0f + 0.33f;
+        dsp_oscil_reinit(synth->state.voices[i].lfo1, config->sample_rate, lfo_freq, true);
     }
 
     dsp_pan_init();
@@ -54,8 +59,9 @@ void synth_free(synth_t* synth) {
     ESP_LOGD(TAG, "Freeing synthesizer instance %p", synth);
 
     for (int i = 0; i < synth->state.polyphony; i++) {
-        free(synth->state.voices[i].osc1);
-        free(synth->state.voices[i].env1);
+        dsp_oscil_free(synth->state.voices[i].osc1);
+        dsp_adsr_free(synth->state.voices[i].env1);
+        dsp_oscil_free(synth->state.voices[i].lfo1);
     }
 
     free(synth->state.voices);
@@ -116,12 +122,10 @@ void synth_note_on(synth_t* synth, int note, float velocity) {
     synth_voice_t* voice = retrigger ? retrigger : free_voice ? free_voice : steal_voice;
 
     voice->note = note;
+    voice->velocity = velocity;
+
     dsp_oscil_reinit(voice->osc1, synth->state.sample_rate, mtof(note), false);
     dsp_adsr_trigger_attack(voice->env1);
-
-    // Set random pan and pan directory
-    voice->pan = ((rand() % 512) / 255.0) - 1.0f;
-    // voice->direction = (((rand() % 512) / 255.0) - 1.0) * 0.001f;
 }
 
 /**
@@ -149,29 +153,20 @@ void synth_process(synth_t* synth, float* audio_buffer, size_t length) {
         for (int j = 0; j < synth->state.polyphony; j++) {
             synth_voice_t* voice = &synth->state.voices[j];
 
-            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * 0.1f;
+            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging;
             float left, right;
 
-            dsp_pan_stereo(sample, voice->pan, &left, &right);
+            float pan = dsp_oscil_tick(voice->lfo1) * 0.75f;
+            dsp_pan_stereo(sample, pan, &left, &right);
 
             audio_buffer[i    ] += left;
             audio_buffer[i + 1] += right;
         }
     }
 
-    // Update status and control parameters of the voice
+    // Update voice status
     for (int j = 0; j < synth->state.polyphony; j++) {
         synth_voice_t* voice = &synth->state.voices[j];
-
         voice->active = voice->env1->state.status != DSP_ADSR_STOPPED;
-        // voice->pan += voice->direction;
-        // 
-        // if (voice->pan > 1.0f) {
-        //     voice->direction *= -1.0f;
-        //     voice->pan = 2.0f - voice->pan;
-        // } else if (voice->pan < -1.0f) {
-        //     voice->direction *= -1.0f;
-        //     voice->pan = -2.0f - voice->pan;
-        // }
     }
 }

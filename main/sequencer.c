@@ -103,7 +103,7 @@ void sequencer_process(sequencer_t* sequencer, size_t n_samples_passed) {
 
         int note_index = rand() % sequencer->notes_available.length;
         sequencer_duration_t note_duration = rand() % SEQUENCER_DURATION_MAX;
-        float velocity = (rand() % 256) / 255.0;
+        float velocity = rand() % 256 / 255.0f;
 
         sequencer->state.notes_playing[i].note = sequencer->notes_available.midi_notes[note_index];
         sequencer->state.notes_playing[i].samples_remaining = sequencer->state.durations[note_duration];
