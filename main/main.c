@@ -47,6 +47,8 @@ void app_main(void) {
     wavetable = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_cos);
 
     // Create synthesizer
+    float fm_ratios[] = {0.5f, 1.0f, 2.0f, 3.0f, 3.5f, 4.0f};
+
     synth_config_t synth_config = {
         .sample_rate = SAMPLE_RATE,
         .polyphony   = 32,
@@ -54,10 +56,26 @@ void app_main(void) {
         .wavetable   = wavetable,
 
         .env1 = {
-            .attack  = 0.1,
-            .decay   = 0.3,
-            .sustain = 0.5,
-            .release = 0.5,
+            .attack  = 0.1f,
+            .peak    = 1.0f,
+            .decay   = 0.3f,
+            .sustain = 0.5f,
+            .release = 0.5f,
+        },
+
+        .env2 = {
+            .attack  = 0.5f,
+            .peak    = 1.0f,
+            .decay   = 0.0f,
+            .sustain = 1.0f,
+            .release = 0.2f,
+        },
+
+        .fm = {
+            .n_ratios = sizeof(fm_ratios) / sizeof(float),
+            .ratios   = fm_ratios,
+            .index_min = 0.25f,
+            .index_max = 0.75f,
         },
     };
 
@@ -69,7 +87,7 @@ void app_main(void) {
     sequencer_config_t sequencer_config = {
         .sample_rate = SAMPLE_RATE,
         .synth       = synth,
-        .n_notes     = 8,
+        .n_notes     = sizeof(notes) / sizeof(int),
         .notes       = notes,
     };
 

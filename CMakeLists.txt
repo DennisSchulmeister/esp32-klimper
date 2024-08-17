@@ -4,3 +4,6 @@ cmake_minimum_required(VERSION 3.16)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(i2s_synth_test)
+
+# Warn when inline function gets not inlined
+add_compile_options(-Winline)

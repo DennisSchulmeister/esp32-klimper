@@ -24,10 +24,26 @@ typedef struct {
     float velocity;                         // Velocity
     float direction;                        // Panorama change delta
 
-    dsp_oscil_t* osc1;                      // Wavetable oscillator
-    dsp_adsr_t*  env1;                      // Amplitude envelope generator
+    dsp_oscil_t* osc1;                      // Carrier: Wavetable oscillator
+    dsp_adsr_t*  env1;                      // Carrier: Amplitude envelope generator
     dsp_oscil_t* lfo1;                      // LFO hard-wired to panorama
+
+    dsp_oscil_t* osc2;                      // Modulator: Wavetable oscillator
+    dsp_adsr_t*  env2;                      // Modulator: Amplitude envelope generator
+
+    float fm_index_2_1;                     // OSC2->OSC1: FM Index
+    float fm_ratio_2_1;                     // OSC2->OSC1: FM Ratio
 } synth_voice_t;
+
+/**
+ * Configuration parameters for the FM synthesis
+ */
+typedef struct {
+        int    n_ratios;
+        float* ratios;
+        float  index_min;
+        float  index_max;
+} synth_fm_params;
 
 /**
  * A very simple, polyphonic wavetable synthesizer. Nothing to write home about. :-)
@@ -36,7 +52,9 @@ typedef struct {
     struct {
         float volume;                       // Overall volume
 
-        dsp_adsr_values_t env1;             // Amplitude envelope generator parameters
+        dsp_adsr_values_t env1;             // Carrier: Amplitude envelope generator parameters
+        dsp_adsr_values_t env2;             // Modulator: Amplitude envelope generator parameters
+        synth_fm_params   fm;               // Frequency modulation parameters
     } params;
 
     struct {
@@ -56,8 +74,10 @@ typedef struct {
     int   polyphony;                        // Maximum number of simultaneous voices
     float volume;                           // Overall volume
     
-    dsp_adsr_values_t env1;                 // Amplitude envelope generator parameters
     dsp_wavetable_t*  wavetable;            // Oscillator wavetable
+    dsp_adsr_values_t env1;                 // Carrier: Amplitude envelope generator parameters
+    dsp_adsr_values_t env2;                 // Modulator: Amplitude envelope generator parameters
+    synth_fm_params   fm;                   // Frequency modulation parameters
 } synth_config_t;
 
 /**
@@ -85,12 +105,20 @@ void synth_free(synth_t* synth);
 void synth_set_volume(synth_t* synth, float volume);
 
 /**
- * Set parameters of the amplitude envelope generator.
+ * Set parameters of the carrier amplitude envelope generator.
  * 
  * @param synth Synthesizer instance
  * @param env1 Attack, decay, sustain, release
  */
 void synth_set_env1_values(synth_t* synth, dsp_adsr_values_t env1);
+
+/**
+ * Set parameters of the modulator amplitude envelope generator.
+ * 
+ * @param synth Synthesizer instance
+ * @param env1 Attack, decay, sustain, release
+ */
+void synth_set_env2_values(synth_t* synth, dsp_adsr_values_t env2);
 
 /**
  * Play a new note or re-trigger an already playing note of the same number.

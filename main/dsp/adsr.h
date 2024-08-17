@@ -36,6 +36,7 @@ typedef struct {
  */
 typedef struct {
     float attack;                           // Attack time
+    float peak;                             // Peak value
     float decay;                            // Decay time
     float sustain;                          // Sustain value
     float release;                          // Release time
@@ -49,6 +50,7 @@ typedef struct {
         dsp_adsr_breakpoint_t attack;       // Attack time
         dsp_adsr_breakpoint_t decay;        // Decay time
         dsp_adsr_breakpoint_t release;      // Release time
+        float                 peak;         // Peak level
         float                 sustain;      // Sustain level
     } envelope;
 
@@ -88,6 +90,15 @@ void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* v
  * @param duration Duration in seconds
  */
 void dsp_adsr_set_attack(dsp_adsr_t* adsr, int sample_rate, float duration);
+
+/**
+ * Set peak level.
+ * 
+ * @param adsr ADSR envelope generator
+ * @param sample_rate Sample rate in Hz
+ * @param level Peak level
+ */
+void dsp_adsr_set_peak(dsp_adsr_t* adsr, int sample_rate, float level);
 
 /**
  * Set decay time.

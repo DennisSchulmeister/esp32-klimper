@@ -38,17 +38,21 @@ void dsp_adsr_free(dsp_adsr_t* adsr) {
  */
 static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate) {
     float delta, nsmpl;
+    int nsmpl_min = sample_rate * 0.01f;
 
     delta = adsr->envelope.attack.value - adsr->envelope.release.value;
     nsmpl = sample_rate * adsr->envelope.attack.duration;
+    if (nsmpl < nsmpl_min) nsmpl = nsmpl_min;
     adsr->envelope.attack.increment = delta / nsmpl;
 
     delta = adsr->envelope.decay.value - adsr->envelope.attack.value;
     nsmpl = sample_rate * adsr->envelope.decay.duration;
+    if (nsmpl < nsmpl_min) nsmpl = nsmpl_min;
     adsr->envelope.decay.increment = delta / nsmpl;
 
     delta = adsr->envelope.release.value - adsr->envelope.sustain;
     nsmpl = sample_rate * adsr->envelope.release.duration;
+    if (nsmpl < nsmpl_min) nsmpl = nsmpl_min;
     adsr->envelope.release.increment = delta / nsmpl;
 }
 
@@ -56,8 +60,10 @@ static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate)
  * Shortcut to set all values at once.
  */
 void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* values) {
-    adsr->envelope.attack.value     = 1.0f;
+    adsr->envelope.attack.value     = values->peak;
     adsr->envelope.attack.duration  = values->attack;
+
+    adsr->envelope.peak             = values->peak;
 
     adsr->envelope.decay.value      = values->sustain;
     adsr->envelope.decay.duration   = values->decay;
@@ -74,8 +80,18 @@ void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* v
  * Set attack time.
  */
 void dsp_adsr_set_attack(dsp_adsr_t* adsr, int sample_rate, float duration) {
-    adsr->envelope.attack.value    = 1.0f;
+    adsr->envelope.attack.value    = adsr->envelope.peak;
     adsr->envelope.attack.duration = duration;
+
+    dsp_adsr_recalc_increments(adsr, sample_rate);
+}
+
+/**
+ * Set peak level.
+ */
+void dsp_adsr_set_peak(dsp_adsr_t* adsr, int sample_rate, float level) {
+    adsr->envelope.peak = level;
+    adsr->envelope.attack.value = level;
 
     dsp_adsr_recalc_increments(adsr, sample_rate);
 }
@@ -95,6 +111,7 @@ void dsp_adsr_set_decay(dsp_adsr_t* adsr, int sample_rate, float duration) {
  */
 void dsp_adsr_set_sustain(dsp_adsr_t* adsr, int sample_rate, float level) {
     adsr->envelope.sustain = level;
+    adsr->envelope.decay.value = level;
 
     dsp_adsr_recalc_increments(adsr, sample_rate);
 }

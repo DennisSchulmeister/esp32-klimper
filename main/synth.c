@@ -11,8 +11,10 @@
 #include "synth.h"
 
 #include <esp_log.h>                        // ESP_LOGx
+#include <esp_attr.h>                       // IRAM_ATTR
 #include <float.h>                          // FLT_MAX
 #include <stdlib.h>                         // calloc(), malloc(), free()
+#include <string.h>                         // memcpy()
 #include <math.h>                           // cos()
 #include "dsp/pan.h"                        // dsp_pan()
 #include "dsp/utils.h"                      // mtof()
@@ -28,7 +30,10 @@ synth_t* synth_new(synth_config_t* config) {
     synth_t* synth = calloc(1, sizeof(synth_t));
 
     synth->params.volume    = config->volume;
-    synth_set_env1_values(synth, config->env1);
+    synth->params.fm        = config->fm;
+
+    synth->params.fm.ratios = malloc(config->fm.n_ratios * sizeof(float));
+    memcpy(synth->params.fm.ratios, config->fm.ratios, config->fm.n_ratios * sizeof(float));
 
     synth->state.sample_rate  = config->sample_rate;
     synth->state.polyphony    = config->polyphony;
@@ -39,11 +44,16 @@ synth_t* synth_new(synth_config_t* config) {
         synth->state.voices[i].osc1 = dsp_oscil_new(config->wavetable);
         synth->state.voices[i].env1 = dsp_adsr_new();
         synth->state.voices[i].lfo1 = dsp_oscil_new(config->wavetable);
-        dsp_adsr_set_values(synth->state.voices[i].env1, config->sample_rate, &config->env1);
+
+        synth->state.voices[i].osc2 = dsp_oscil_new(config->wavetable);
+        synth->state.voices[i].env2 = dsp_adsr_new();
 
         float lfo_freq = rand() % 256 / 255.0f * 3.0f + 0.33f;
         dsp_oscil_reinit(synth->state.voices[i].lfo1, config->sample_rate, lfo_freq, true);
     }
+
+    synth_set_env1_values(synth, config->env1);
+    synth_set_env2_values(synth, config->env2);
 
     dsp_pan_init();
 
@@ -62,8 +72,12 @@ void synth_free(synth_t* synth) {
         dsp_oscil_free(synth->state.voices[i].osc1);
         dsp_adsr_free(synth->state.voices[i].env1);
         dsp_oscil_free(synth->state.voices[i].lfo1);
+
+        dsp_oscil_free(synth->state.voices[i].osc2);
+        dsp_adsr_free(synth->state.voices[i].env2);
     }
 
+    free(synth->params.fm.ratios);
     free(synth->state.voices);
     free(synth);
 
@@ -79,13 +93,24 @@ void synth_set_volume(synth_t* synth, float volume)  {
 }
 
 /**
- * Set parameters of the amplitude envelope generator.
+ * Set parameters of the carrier amplitude envelope generator.
  */
 void synth_set_env1_values(synth_t* synth, dsp_adsr_values_t env1) {
     synth->params.env1 = env1;
 
     for (int i = 0; i < synth->state.polyphony; i++) {
         dsp_adsr_set_values(synth->state.voices[i].env1, synth->state.sample_rate, &env1);
+    }
+}
+
+/**
+ * Set parameters of the modulator amplitude envelope generator.
+ */
+void synth_set_env2_values(synth_t* synth, dsp_adsr_values_t env2) {
+    synth->params.env2 = env2;
+
+    for (int i = 0; i < synth->state.polyphony; i++) {
+        dsp_adsr_set_values(synth->state.voices[i].env2, synth->state.sample_rate, &env2);
     }
 }
 
@@ -118,14 +143,24 @@ void synth_note_on(synth_t* synth, int note, float velocity) {
         }
     }
 
-    // Trigger envelope generator
     synth_voice_t* voice = retrigger ? retrigger : free_voice ? free_voice : steal_voice;
 
     voice->note = note;
     voice->velocity = velocity;
 
-    dsp_oscil_reinit(voice->osc1, synth->state.sample_rate, mtof(note), false);
+    // Update FM parameters
+    int fm_ratio_index = rand() % synth->params.fm.n_ratios;
+    voice->fm_ratio_2_1 = synth->params.fm.ratios[fm_ratio_index];
+    voice->fm_index_2_1 = rand() % 256 / 255.0f * (synth->params.fm.index_max - synth->params.fm.index_min) + synth->params.fm.index_min;
+
+    // Trigger oscilators and envelope generator
+    float freq1 = mtof(note);
+    float freq2 = freq1 * voice->fm_ratio_2_1;
+
+    dsp_oscil_reinit(voice->osc1, synth->state.sample_rate, freq1, false);
+    dsp_oscil_reinit(voice->osc2, synth->state.sample_rate, freq2, false);
     dsp_adsr_trigger_attack(voice->env1);
+    dsp_adsr_trigger_attack(voice->env2);
 }
 
 /**
@@ -147,11 +182,16 @@ void synth_note_off(synth_t* synth, int note) {
  * Render next audio block. This calls the different DSP methods to synthesize the sound
  * and updates each voice's active flag based on its envelope generator status.
  */
-void synth_process(synth_t* synth, float* audio_buffer, size_t length) {
+void IRAM_ATTR synth_process(synth_t* synth, float* audio_buffer, size_t length) {
     // Mix next samples into the output buffer
     for (size_t i = 0; i < length; i += 2) {
         for (int j = 0; j < synth->state.polyphony; j++) {
             synth_voice_t* voice = &synth->state.voices[j];
+
+            // // Hitting a wall here: The ESP32 cannot compute the two oscillators in time
+            // float sample1 = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1);
+            // float sample2 = dsp_oscil_tick(voice->osc2) * dsp_adsr_tick(voice->env2) * voice->fm_ratio_2_1;
+            // float sample = (sample1 + sample2) * synth->state.gain_staging * 0.5f;
 
             float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging;
             float left, right;
