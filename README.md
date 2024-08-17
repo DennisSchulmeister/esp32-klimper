@@ -102,6 +102,14 @@ Performance Considerations
 1. `double` calculations are implemented in software as the FPU only supports single-precission
    `float` values. But that should be okay for generic audio DSP.
 
+1. There are mixed opinions on the Internet about the floating point performance of the ESP32.
+   The documentation says that integer arithmethic is much faster. But there are benchmarks that
+   show only little difference. And the bit-shift after multiplication/division in fixed-point
+   math makes both use the same number of cycles on average.
+
+   After implementing this project I must say, I am either bad at writing performant real-time
+   code or the ESP32 has rather weak math performance. Probably a little bit of both. :-)
+
 1. ESP32 supports some very basic SIMD operations. But I am not sure if they are actually used
    by the compiler. Need to check this.
 
