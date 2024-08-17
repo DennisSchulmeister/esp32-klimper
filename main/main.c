@@ -26,8 +26,10 @@ void dsp_task(void* parameters);
 static TaskHandle_t dsp_task_handle = NULL;
 
 // DSP Stuff
-#define SAMPLE_RATE      (44100)
-#define N_SAMPLES_BUFFER (880)              // 440 Frames (two samples each for stereo) = 10ms audio latency
+// Original values = 44.1kHz sample rate and 880 samples buffer to 10ms latency.
+// But the ESP32 cannot calculate at most two oscillators per voice then!
+#define SAMPLE_RATE      (22050)
+#define N_SAMPLES_BUFFER (440)              // 440 Frames (two samples each for stereo) = 10ms audio latency
 #define N_SAMPLES_CYCLE  (220)              // 10ms / 4 = 2ms timing accuracy (must divide the sample buffer by an integer!)
 
 static float dsp_buffer[N_SAMPLES_BUFFER] = {};
