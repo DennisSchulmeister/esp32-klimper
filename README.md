@@ -12,7 +12,7 @@ ESP32 I²S Synthesizer Test
 Demo
 ----
 
-TODO - It is not producing any sound, yet. :-)
+TODO - Now that it is producing sound. :-)
 
 Description
 -----------
