@@ -51,12 +51,23 @@ void dsp_oscil_free(dsp_oscil_t* oscil);
 
 /**
  * Calculate next sample. Algorithm from "The Audio Programming Book", p302ff.
+ * 
  * @param oscil Oscillator instance
+ * @param modulator Sample output from modulator oscillator (use 0.0f for no FM)
+ * @returns Next sample
  */
-static inline float dsp_oscil_tick(dsp_oscil_t* oscil) {
+static inline float dsp_oscil_tick(dsp_oscil_t* oscil, float modulator) {
     float sample = dsp_wavetable_read2(oscil->wavetable, oscil->index);
 
-    oscil->index += oscil->increment;
+    // // No FM
+    // oscil->index += oscil->increment;
+
+    // Linear FM (needs a low-pass filter to avoid aliasing)
+    oscil->index += oscil->increment + (modulator * oscil->wavetable->length * 0.01f);
+
+    // // Exponential FM (needs low-pass filter and lookup table for powf()! Formula really correct??)
+    // oscil->index += oscil->increment * powf(2.0f, modulator);
+    
     while (oscil->index >= oscil->wavetable->length) oscil->index -= oscil->wavetable->length;
     while (oscil->index < 0) oscil->index += oscil->wavetable->length;
 

@@ -188,19 +188,22 @@ void IRAM_ATTR synth_process(synth_t* synth, float* audio_buffer, size_t length)
         for (int j = 0; j < synth->state.polyphony; j++) {
             synth_voice_t* voice = &synth->state.voices[j];
 
-            // // Hitting a wall here: The ESP32 cannot compute the two oscillators in time
-            // float sample1 = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1);
-            // float sample2 = dsp_oscil_tick(voice->osc2) * dsp_adsr_tick(voice->env2) * voice->fm_ratio_2_1;
-            // float sample = (sample1 + sample2) * synth->state.gain_staging * 0.5f;
+            // No FM but LFO for panning
+            float sample = dsp_oscil_tick(voice->osc1, 0.0f) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging;
 
-            float sample = dsp_oscil_tick(voice->osc1) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging;
             float left, right;
-
-            float pan = dsp_oscil_tick(voice->lfo1) * 0.75f;
+            float pan = dsp_oscil_tick(voice->lfo1, 0.0f) * 0.75f;
             dsp_pan_stereo(sample, pan, &left, &right);
 
             audio_buffer[i    ] += left;
             audio_buffer[i + 1] += right;
+
+            // // FM but no LFO for panning, as doing both would exceed our timeslot on the ESP32!
+            // float sample2 = dsp_oscil_tick(voice->osc2, 0.0f)    * dsp_adsr_tick(voice->env2) * voice->fm_index_2_1;
+            // float sample1 = dsp_oscil_tick(voice->osc1, sample2) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging;
+            // 
+            // audio_buffer[i    ] += sample1;
+            // audio_buffer[i + 1] += sample1;
         }
     }
 

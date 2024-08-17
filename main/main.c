@@ -47,7 +47,7 @@ void app_main(void) {
     wavetable = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_cos);
 
     // Create synthesizer
-    float fm_ratios[] = {0.5f, 1.0f, 2.0f, 3.0f, 3.5f, 4.0f};
+    float fm_ratios[] = {1.0f};
 
     synth_config_t synth_config = {
         .sample_rate = SAMPLE_RATE,
