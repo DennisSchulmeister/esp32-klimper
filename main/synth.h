@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -58,7 +58,6 @@ typedef struct {
     } params;
 
     struct {
-        int   sample_rate;                  // Sample rate in Hz
         int   polyphony;                    // Number of voices
         float gain_staging;                 // Gain factor to avoid clipping
 
@@ -70,10 +69,8 @@ typedef struct {
  * Configuration parameters for the synthesizer.
  */
 typedef struct {
-    int   sample_rate;                      // Sample rate in Hz
-    int   polyphony;                        // Maximum number of simultaneous voices
     float volume;                           // Overall volume
-    
+
     dsp_wavetable_t*  wavetable;            // Oscillator wavetable
     dsp_adsr_values_t env1;                 // Carrier: Amplitude envelope generator parameters
     dsp_adsr_values_t env2;                 // Modulator: Amplitude envelope generator parameters
@@ -82,7 +79,7 @@ typedef struct {
 
 /**
  * Create a new synthesizer instance.
- * 
+ *
  * @param config Configuration parameters (can be freed afterwards)
  * @returns Pointer to the synthesizer instance
  */
@@ -91,14 +88,14 @@ synth_t* synth_new(synth_config_t* config);
 /**
  * Delete a synthesizer instance as a replacement for `free()`. This makes sure that
  * the internal data structures will be completely freed.
- * 
+ *
  * @param synth Synthesizer instance
  */
 void synth_free(synth_t* synth);
 
 /**
  * Set overall volume of the synthesizer.
- * 
+ *
  * @param synth Synthesizer instance
  * @param volume Volume level [0…1]
  */
@@ -106,7 +103,7 @@ void synth_set_volume(synth_t* synth, float volume);
 
 /**
  * Set parameters of the carrier amplitude envelope generator.
- * 
+ *
  * @param synth Synthesizer instance
  * @param env1 Attack, decay, sustain, release
  */
@@ -114,7 +111,7 @@ void synth_set_env1_values(synth_t* synth, dsp_adsr_values_t env1);
 
 /**
  * Set parameters of the modulator amplitude envelope generator.
- * 
+ *
  * @param synth Synthesizer instance
  * @param env1 Attack, decay, sustain, release
  */
@@ -122,7 +119,7 @@ void synth_set_env2_values(synth_t* synth, dsp_adsr_values_t env2);
 
 /**
  * Play a new note or re-trigger an already playing note of the same number.
- * 
+ *
  * @param synth Synthesizer instance
  * @param note MIDI note number
  * @param velocity Note velocity (0…1)
@@ -131,7 +128,7 @@ void synth_note_on(synth_t* synth, int note, float velocity);
 
 /**
  * Stop a currently playing note.
- * 
+ *
  * @param synth Synthesizer instance
  * @param note MIDI note number
  */
@@ -140,7 +137,7 @@ void synth_note_off(synth_t* synth, int note);
 /**
  * Render a new block of audio with the currently set parameters and notes.
  * The buffer is expected to be two-channel left/right interleaved.
- * 
+ *
  * @param synth Synthesizer instance
  * @param audio_buffer Audio buffer to render into
  * @param length Length of the audio buffer

@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -11,10 +11,8 @@
 #include <freertos/FreeRTOS.h>              // Common FreeRTOS (must come first)
 #include <freertos/task.h>                  // TaskHandle_t
 #include <portmacro.h>                      // spinlock_t
-#include <driver/gpio.h>                    // GPIO_NUM_xy
 #include <esp_log.h>                        // ESP_LOGx
 #include <stdbool.h>                        // bool, true, false
-#include <driver/i2s_std.h>                 // I2S_GPIO_UNUSED
 #include "driver/audiohw.h"
 #include "dsp/wavetable.h"
 #include "synth.h"
@@ -26,13 +24,7 @@ void dsp_task(void* parameters);
 static TaskHandle_t dsp_task_handle = NULL;
 
 // DSP Stuff
-// Original values = 44.1kHz sample rate and 880 samples buffer to 10ms latency.
-// But the ESP32 cannot calculate at most two oscillators per voice then!
-#define SAMPLE_RATE      (22050)
-#define N_SAMPLES_BUFFER (440)              // 440 Frames (two samples each for stereo) = 10ms audio latency
-#define N_SAMPLES_CYCLE  (220)              // 10ms / 4 = 2ms timing accuracy (must divide the sample buffer by an integer!)
-
-static float dsp_buffer[N_SAMPLES_BUFFER] = {};
+static float dsp_buffer[CONFIG_AUDIO_N_SAMPLES_BUFFER] = {};
 
 static dsp_wavetable_t* wavetable = NULL;
 static synth_t*         synth     = NULL;
@@ -46,16 +38,14 @@ void app_main(void) {
     // get values at the Nyquist frequency (sample rate * 0.5). Because there the wavetable
     // will only be read at the first and middle position which with a sine would be zero.
     // See "The Audio Programming Book", p. 299
-    wavetable = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_cos);
+    wavetable = dsp_wavetable_get(DSP_WAVETABLE_COS);
 
     // Create synthesizer
     float fm_ratios[] = {1.0f};
 
     synth_config_t synth_config = {
-        .sample_rate = SAMPLE_RATE,
-        .polyphony   = 32,
-        .volume      = 1.0,
-        .wavetable   = wavetable,
+        .volume    = 1.0,
+        .wavetable = wavetable,
 
         .env1 = {
             .attack  = 0.1f,
@@ -87,10 +77,9 @@ void app_main(void) {
     int notes[] = {60, 62, 64, 65, 67, 69, 71, 72};
 
     sequencer_config_t sequencer_config = {
-        .sample_rate = SAMPLE_RATE,
-        .synth       = synth,
-        .n_notes     = sizeof(notes) / sizeof(int),
-        .notes       = notes,
+        .synth   = synth,
+        .n_notes = sizeof(notes) / sizeof(int),
+        .notes   = notes,
     };
 
     sequencer = sequencer_new(&sequencer_config);
@@ -110,12 +99,12 @@ void app_main(void) {
     );
 
     audiohw_config_t audiohw_config = {
-        .sample_rate = SAMPLE_RATE,
-        .n_samples   = N_SAMPLES_BUFFER,
-        .i2s_mck_io  = I2S_GPIO_UNUSED,  // Only GPIO 0/1/3 allowed, but GPIO1 = TX0!
-        .i2s_lrc_io  = GPIO_NUM_25,
-        .i2s_bck_io  = GPIO_NUM_27,
-        .i2s_dout_io = GPIO_NUM_26,
+        .sample_rate = CONFIG_AUDIO_SAMPLE_RATE,
+        .n_samples   = CONFIG_AUDIO_N_SAMPLES_BUFFER,
+        .i2s_mck_io  = CONFIG_I2S_MCLK_GPIO,
+        .i2s_lrc_io  = CONFIG_I2S_WSEL_GPIO,
+        .i2s_bck_io  = CONFIG_I2S_BCLK_GPIO,
+        .i2s_dout_io = CONFIG_I2S_DOUT_GPIO,
         .dsp_task    = dsp_task_handle,
     };
 
@@ -131,21 +120,21 @@ void dsp_task(void* parameters) {
     while (true) {
         audiohw_buffer_t tx_buffer = *(audiohw_buffer_t*) ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        for (size_t i = 0; i < N_SAMPLES_BUFFER; i++) {
+        for (size_t i = 0; i < CONFIG_AUDIO_N_SAMPLES_BUFFER; i++) {
             dsp_buffer[i] = 0.0f;
         }
 
-        for (size_t n_samples_processed = 0; n_samples_processed < N_SAMPLES_BUFFER; n_samples_processed += N_SAMPLES_CYCLE) {
-            sequencer_process(sequencer, N_SAMPLES_CYCLE);
-            synth_process(synth, dsp_buffer + n_samples_processed, N_SAMPLES_CYCLE);
+        for (size_t n_samples_processed = 0; n_samples_processed < CONFIG_AUDIO_N_SAMPLES_BUFFER; n_samples_processed += CONFIG_AUDIO_N_SAMPLES_CYCLE) {
+            sequencer_process(sequencer, CONFIG_AUDIO_N_SAMPLES_CYCLE);
+            synth_process(synth, dsp_buffer + n_samples_processed, CONFIG_AUDIO_N_SAMPLES_CYCLE);
         }
 
-        for (int i = 0; (i < N_SAMPLES_BUFFER) && (i < tx_buffer.size); i++) {
+        for (int i = 0; (i < CONFIG_AUDIO_N_SAMPLES_BUFFER) && (i < tx_buffer.size); i++) {
             // NOTE: The assumption here is that the buffer provided by the audio hardware has the
             // same size as the DSP buffer used here. There is a maximum limit of how big a DMA buffer
             // can be on the ESP32. But we assume that as real-time application we are below that limit.
             float sample = dsp_buffer[i];
-            
+
             if (sample < -1.0f) sample = -1.0f;
             else if (sample > 1.0f) sample = 1.0f;
 

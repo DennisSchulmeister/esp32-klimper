@@ -2,6 +2,7 @@ idf_component_register(
     SRCS "main.c"
          "synth.c"
          "sequencer.c"
+         #"ui.c"
 
          "driver/audiohw.c"
 

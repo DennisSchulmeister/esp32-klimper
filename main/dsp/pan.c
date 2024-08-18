@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test / µDSP Library
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -21,6 +21,6 @@ void dsp_pan_init() {
     if (dsp_pan_initialized) return;
     dsp_pan_initialized = true;
 
-    dsp_pan_wt_cos = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_cos);
-    dsp_pan_wt_sin = dsp_wavetable_new(DSP_WAVETABLE_DEFAULT_LENGTH, 1, &dsp_wavetable_sin);
+    dsp_pan_wt_cos = dsp_wavetable_get(DSP_WAVETABLE_COS);
+    dsp_pan_wt_sin = dsp_wavetable_get(DSP_WAVETABLE_SIN);
 }

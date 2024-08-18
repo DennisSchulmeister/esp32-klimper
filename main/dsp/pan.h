@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test / µDSP Library
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -28,14 +28,14 @@ void dsp_pan_init();
  * Apply equal-power pan law to the given sample. The panning value ranges from
  * minus one to one from left to right. Algorithm from "The Audio Programming Book",
  * p.234ff, simplified and changed to use pre-calculated wave tables.
- * 
+ *
  * @param sample Input sample
  * @param pan Pan value [-1 … 1]
  * @param left [out] Left output sample
  * @param right [out] Right output sample
  */
 static inline void dsp_pan_stereo(float sample, float pan, float* left, float* right) {
-    float index = (pan + 1.0f) * 0.125f * DSP_WAVETABLE_DEFAULT_LENGTH;
+    float index = (pan + 1.0f) * 0.125f * CONFIG_DSP_WAVETABLE_LENGTH;
 
     *left  = sample * dsp_wavetable_read2(dsp_pan_wt_cos, index);
     *right = sample * dsp_wavetable_read2(dsp_pan_wt_sin, index);

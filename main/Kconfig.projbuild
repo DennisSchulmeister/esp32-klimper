@@ -1,0 +1,123 @@
+menu ">>> Klimper Configuration <<<"
+    menu "Audio Hardware"
+        config I2S_MCLK_GPIO
+            int "I²S DAC: Master clock GPIO pin"
+            default -1
+            help
+                GPIO output pin for the I²S master clock. Note that (depending on the ESP32 variant?)
+                only pins 0, 1 and 3 can be used. Other pins will generate a rather unmeaningful warning
+                on the serial console and abort I²S initialization. However, these pins are either not
+                present on some development boards are used for other functions:
+
+                    - GPIO 0: Usually not available but connected to the "Boot" button
+                    - GPIO 1: TX0 used by UART and USB serial console
+                    - GPIO 3: Not available e.g. on ESP-WROOM-32 boards
+
+                It is therefor best to leave this at the value -1 (unused) if your DAC can run without
+                external master clock. PCM5102 is a good example. Otherwise use GPIO 1. The serial console
+                can then still be used but will output a lot of garbage from the master clock signal. And
+                serial output can disturb the DAC.
+
+        config I2S_WSEL_GPIO
+            int "I²S DAC: Left/right clock (aka word select) GPIO pin"
+            default 25
+            help
+                GPIO output pin for the left/right clock, aka word select signal. This signal toggles
+                between left and right channel for each I²S frame so that usually one sample for the
+                left channel will be followed by one sample for the right channel.
+
+        config I2S_BCLK_GPIO
+            int "I²S DAC: Bit clock GPIO pin"
+            default 27
+            help
+                GPIO output pin for the bit clock. This signal clocks the individual bits of a sample
+                frame. It is basically the "serial clock" of I²S.
+
+        config I2S_DOUT_GPIO
+            int "I²S DAC: Serial data GPIO pin"
+            default 26
+            help
+                GPIO output pin for the serial audio data. This pin transfers the individual sample
+                frames from the microcontroller to the DAC. This is basically the "serial data" of I²S.
+
+        config AUDIO_SAMPLE_RATE
+            int "Sample rate in Hz"
+            default 44100
+            help
+                The sample rate at which the DAC and audio processing operate. 44100 Hz is the usual
+                CD quality and should give very good results. However, to save processing cycles any
+                lower sample rate like 22050 can be used, since the DSP calculations quickly may
+                exceed the capabilities of the ESP32 floating point unit.
+
+                Choose a smaller value here if the audio output sounds damaged and a timeout watchdog
+                warnings spam the serial console. In that case the ESP32 is not fast enough to do all
+                the math in one processing cycle.
+
+                This setting together with AUDIO_N_SAMPLES_BUFFER defines the audio latency. Smaller
+                latency is better for real-time usage but limits the available calculation time.
+
+        config AUDIO_N_SAMPLES_BUFFER
+            int "Number of samples in buffer (latency)"
+            default 880
+            help
+                This settings defines how many samples will be held in one audio buffer, which together
+                with the sample rate directly defines the audio latency. Smaller latency is better but
+                severly limits the available processing time for the rather weak ESP32 FPU.
+
+                Keep in mind that for stereo output two samples are used. Therefor this number must be
+                divided by two to calculate the latency:
+
+                    Latency in ms = (1 / Sample Rate in Hz) * (Number of samples in buffer / 2)
+
+                The default values of 44,100 Hz sample rate and 880 samples per buffer lead to roughly
+                10 ms latency which is good for real-time performance. The actual latency will be printed
+                on the serial console when the audio sub-system is initialized.
+
+                The actual buffer size in bytes will be two times this value. But note that the I²S
+                implementation of the ESP32 has a fixed maximum size for the buffers (something less than
+                2000 bytes or so). Their workaround for larger buffers is to use multiple buffers, which
+                is not supported here to keep the code simpler and since we want real-time performance, anyway.
+
+        config AUDIO_N_SAMPLES_CYCLE
+            int "Number of samples processed in one cycle (k-rate)"
+            default 220
+            help
+                This setting defines how many samples will be calculated before the control parameters
+                of the audio synthesis engine are updated. The value must devide the sample buffer by
+                an integer value to prevent illegal memory access! Yes our implementation is a bit lazy
+                here to save processing cycles. Choose the value right and we don't need to run the same
+                conditional check in our main DSP processing loop.
+
+                Think of this parameter like the k-rate in Csound or the control rate in Pure Data.
+                It is really the same, finding a compromise between audio quality and processing needs.
+                In Pure Data the default is 64 samples, but since we are on a rather weak microcontroller
+                we allow ourselves a bit more time here (about 2.5ms with the default settings).
+
+    endmenu
+
+    menu "Audio Synthesis"
+        config DSP_WAVETABLE_LENGTH
+            int "Wavetable default length (samples)"
+            default 512
+            help
+                Default length for wavetables and lookup tables in samples. 512 samples is a good compromise
+                between memory size and audio quality and the same length that e.g. Pure Data uses for its
+                built-in oscillators.
+
+        config SYNTH_POLYPHONY
+            int "Synthesizer polyphony (number voices)"
+            default 32
+            help
+                The maximum number of voices the synthesizer can play at the same time. More is better but
+                uses more processing power. If all voices are playing the voice allocator tries to steal
+                the voice with the lowest total volume for each new note.
+    endmenu
+
+    menu "User Interface"
+        config UI_BTN_STARTSTOP_GPIO
+            int "Start/stop button: GPIO input pin"
+            default 34
+            help
+                GPIO pin number to be used for the "start/stop sequencer" button
+    endmenu
+endmenu

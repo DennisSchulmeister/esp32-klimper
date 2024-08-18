@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -27,7 +27,7 @@ static i2s_chan_handle_t tx_handle;             // I²S Transmit Handle
 void audiohw_init(audiohw_config_t* config) {
     dsp_task = config->dsp_task;
 
-    i2s_chan_config_t channel_config = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER); 
+    i2s_chan_config_t channel_config = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     channel_config.auto_clear_before_cb = true;
     channel_config.auto_clear_after_cb  = true;
     channel_config.dma_desc_num         = 2;                            // Two buffers
@@ -58,7 +58,7 @@ void audiohw_init(audiohw_config_t* config) {
     i2s_event_callbacks_t callbacks = {
         .on_sent = i2s_isr_on_sent,
     };
-    
+
     i2s_channel_register_event_callback(tx_handle, &callbacks, NULL);
     i2s_channel_enable(tx_handle);
 
@@ -73,8 +73,10 @@ void audiohw_init(audiohw_config_t* config) {
         uint32_t n_frames = channel_info.total_dma_buf_size / channel_config.dma_desc_num / standard_config.slot_cfg.slot_mode / standard_config.slot_cfg.data_bit_width * 8;
         float latency_ms = 1000.0 * n_frames / standard_config.clk_cfg.sample_rate_hz;
 
-        ESP_LOGI(TAG, "I2S DMA Buffer...: %" PRIu32 " Bytes", channel_info.total_dma_buf_size);
-        ESP_LOGI(TAG, "I2S Latency......: %f ms", latency_ms);
+        ESP_LOGI(TAG, "I²S Sample Rate............: %i Hz", CONFIG_AUDIO_SAMPLE_RATE);
+        ESP_LOGI(TAG, "I²S Samples per Buffer.....: %i (containing two audio channels)", CONFIG_AUDIO_N_SAMPLES_BUFFER);
+        ESP_LOGI(TAG, "I²S Resulting DMA Buffer...: %" PRIu32 " Bytes", channel_info.total_dma_buf_size);
+        ESP_LOGI(TAG, "I²S Resulting Latency......: %f ms", latency_ms);
     } else {
         // That should not happen!
         ESP_LOGE(TAG, "Cannot calculate I2S latency due to division by zero.");
@@ -87,16 +89,16 @@ void audiohw_init(audiohw_config_t* config) {
 static IRAM_ATTR bool i2s_isr_on_sent(i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx) {
     audiohw_buffer.data = event->dma_buf;
     audiohw_buffer.size = event->size;
-    
+
     BaseType_t higherPriorityTaskWoken = pdFALSE;
-    
+
     xTaskNotifyFromISR(
         /* xTaskToNotify            */ dsp_task,
         /* ulValue                  */ (uint32_t) &audiohw_buffer,
         /* eAction                  */ eSetValueWithOverwrite,
-        /* xHigherPriorityTaskWoken */ &higherPriorityTaskWoken 
+        /* xHigherPriorityTaskWoken */ &higherPriorityTaskWoken
     );
-    
+
     // See: https://www.freertos.org/RTOS_Task_Notification_As_Binary_Semaphore.html
     // Trigger immediate context switch if needed to return to the highest priority task
     portYIELD_FROM_ISR(higherPriorityTaskWoken);

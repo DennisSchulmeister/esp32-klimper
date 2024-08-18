@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test / µDSP Library
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -32,26 +32,25 @@ void dsp_adsr_free(dsp_adsr_t* adsr) {
  * at 1.0 and 0.0, not all values must be recalculated with every change.
  * But let's keep it simple and clean here and foresee the option of a more
  * sophisticated envelope generator in futre.
- * 
+ *
  * @param adsr ADSR envelope generator instance
- * @param sample_rate Sample rate in Hz
  */
-static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate) {
+static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr) {
     float delta, nsmpl;
-    int nsmpl_min = sample_rate * 0.01f;
+    static int nsmpl_min = CONFIG_AUDIO_SAMPLE_RATE * 0.01f;
 
     delta = adsr->envelope.attack.value - adsr->envelope.release.value;
-    nsmpl = sample_rate * adsr->envelope.attack.duration;
+    nsmpl = CONFIG_AUDIO_SAMPLE_RATE * adsr->envelope.attack.duration;
     if (nsmpl < nsmpl_min) nsmpl = nsmpl_min;
     adsr->envelope.attack.increment = delta / nsmpl;
 
     delta = adsr->envelope.decay.value - adsr->envelope.attack.value;
-    nsmpl = sample_rate * adsr->envelope.decay.duration;
+    nsmpl = CONFIG_AUDIO_SAMPLE_RATE * adsr->envelope.decay.duration;
     if (nsmpl < nsmpl_min) nsmpl = nsmpl_min;
     adsr->envelope.decay.increment = delta / nsmpl;
 
     delta = adsr->envelope.release.value - adsr->envelope.sustain;
-    nsmpl = sample_rate * adsr->envelope.release.duration;
+    nsmpl = CONFIG_AUDIO_SAMPLE_RATE * adsr->envelope.release.duration;
     if (nsmpl < nsmpl_min) nsmpl = nsmpl_min;
     adsr->envelope.release.increment = delta / nsmpl;
 }
@@ -59,7 +58,7 @@ static inline void dsp_adsr_recalc_increments(dsp_adsr_t* adsr, int sample_rate)
 /**
  * Shortcut to set all values at once.
  */
-void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* values) {
+void dsp_adsr_set_values(dsp_adsr_t* adsr, dsp_adsr_values_t* values) {
     adsr->envelope.attack.value     = values->peak;
     adsr->envelope.attack.duration  = values->attack;
 
@@ -73,58 +72,58 @@ void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* v
     adsr->envelope.release.value    = 0.0f;
     adsr->envelope.release.duration = values->release;
 
-    dsp_adsr_recalc_increments(adsr, sample_rate);
+    dsp_adsr_recalc_increments(adsr);
 }
 
 /**
  * Set attack time.
  */
-void dsp_adsr_set_attack(dsp_adsr_t* adsr, int sample_rate, float duration) {
+void dsp_adsr_set_attack(dsp_adsr_t* adsr, float duration) {
     adsr->envelope.attack.value    = adsr->envelope.peak;
     adsr->envelope.attack.duration = duration;
 
-    dsp_adsr_recalc_increments(adsr, sample_rate);
+    dsp_adsr_recalc_increments(adsr);
 }
 
 /**
  * Set peak level.
  */
-void dsp_adsr_set_peak(dsp_adsr_t* adsr, int sample_rate, float level) {
+void dsp_adsr_set_peak(dsp_adsr_t* adsr, float level) {
     adsr->envelope.peak = level;
     adsr->envelope.attack.value = level;
 
-    dsp_adsr_recalc_increments(adsr, sample_rate);
+    dsp_adsr_recalc_increments(adsr);
 }
 
 /**
  * Set decay time.
  */
-void dsp_adsr_set_decay(dsp_adsr_t* adsr, int sample_rate, float duration) {
+void dsp_adsr_set_decay(dsp_adsr_t* adsr, float duration) {
     adsr->envelope.decay.value    = adsr->envelope.sustain;
     adsr->envelope.decay.duration = duration;
 
-    dsp_adsr_recalc_increments(adsr, sample_rate);
+    dsp_adsr_recalc_increments(adsr);
 }
 
 /**
  * Set sustain level.
  */
-void dsp_adsr_set_sustain(dsp_adsr_t* adsr, int sample_rate, float level) {
+void dsp_adsr_set_sustain(dsp_adsr_t* adsr, float level) {
     adsr->envelope.sustain = level;
     adsr->envelope.decay.value = level;
 
-    dsp_adsr_recalc_increments(adsr, sample_rate);
+    dsp_adsr_recalc_increments(adsr);
 }
 
 
 /**
  * Set release time.
  */
-void dsp_adsr_set_release(dsp_adsr_t* adsr, int sample_rate, float duration) {
+void dsp_adsr_set_release(dsp_adsr_t* adsr, float duration) {
     adsr->envelope.release.value    = 0.0f;
     adsr->envelope.release.duration = duration;
 
-    dsp_adsr_recalc_increments(adsr, sample_rate);
+    dsp_adsr_recalc_increments(adsr);
 }
 
 /**

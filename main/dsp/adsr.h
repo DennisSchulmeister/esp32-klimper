@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test / µDSP Library
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -75,57 +75,51 @@ void dsp_adsr_free(dsp_adsr_t* adsr);
 /**
  * Shortcut to set all values at once. Also saves some processing cycles, because
  * the value increments will only be recalculated once.
- * 
+ *
  * @param adsr ADSR envelope generator
- * @param sample_rate Sample rate in Hz
  * @param value ADSR values
  */
-void dsp_adsr_set_values(dsp_adsr_t* adsr, int sample_rate, dsp_adsr_values_t* values);
+void dsp_adsr_set_values(dsp_adsr_t* adsr, dsp_adsr_values_t* values);
 
 /**
  * Set attack time.
- * 
+ *
  * @param adsr ADSR envelope generator
- * @param sample_rate Sample rate in Hz
  * @param duration Duration in seconds
  */
-void dsp_adsr_set_attack(dsp_adsr_t* adsr, int sample_rate, float duration);
+void dsp_adsr_set_attack(dsp_adsr_t* adsr, float duration);
 
 /**
  * Set peak level.
- * 
+ *
  * @param adsr ADSR envelope generator
- * @param sample_rate Sample rate in Hz
  * @param level Peak level
  */
-void dsp_adsr_set_peak(dsp_adsr_t* adsr, int sample_rate, float level);
+void dsp_adsr_set_peak(dsp_adsr_t* adsr, float level);
 
 /**
  * Set decay time.
- * 
+ *
  * @param adsr ADSR envelope generator
- * @param sample_rate Sample rate in Hz
  * @param duration Duration in seconds
  */
-void dsp_adsr_set_decay(dsp_adsr_t* adsr, int sample_rate, float duration);
+void dsp_adsr_set_decay(dsp_adsr_t* adsr, float duration);
 
 /**
  * Set sustain level.
- * 
+ *
  * @param adsr ADSR envelope generator
- * @param sample_rate Sample rate in Hz
  * @param level Sustain level
  */
-void dsp_adsr_set_sustain(dsp_adsr_t* adsr, int sample_rate, float level);
+void dsp_adsr_set_sustain(dsp_adsr_t* adsr, float level);
 
 /**
  * Set release time.
- * 
+ *
  * @param adsr ADSR envelope generator
- * @param sample_rate Sample rate in Hz
  * @param duration Duration in seconds
  */
-void dsp_adsr_set_release(dsp_adsr_t* adsr, int sample_rate, float duration);
+void dsp_adsr_set_release(dsp_adsr_t* adsr, float duration);
 
 /**
  * Start the envelope generator to generate the atack/decay/sustain part.

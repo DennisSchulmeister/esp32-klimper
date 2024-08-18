@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -23,14 +23,13 @@ sequencer_t* sequencer_new(sequencer_config_t* config) {
 
     sequencer_t* sequencer = calloc(1, sizeof(sequencer_t));
 
-    sequencer->params.synth      = config->synth;
-    sequencer->state.sample_rate = config->sample_rate;
+    sequencer->params.synth = config->synth;
 
     sequencer->notes_available.midi_notes = malloc(config->n_notes * sizeof(int));
     sequencer->notes_available.length     = config->n_notes;
     memcpy(sequencer->notes_available.midi_notes, config->notes, config->n_notes * sizeof(int));
 
-    ESP_LOGD(TAG, "Created sequencer instance %p", sequencer);    
+    ESP_LOGI(TAG, "Created sequencer instance %p", sequencer);
 
     return sequencer;
 }
@@ -52,7 +51,7 @@ void sequencer_set_bpm(sequencer_t* sequencer, int bpm) {
     ESP_LOGD(TAG, "Setting musical tempo to %i bpm.", bpm);
 
     sequencer->params.bpm = bpm;
-    sequencer->state.durations[SEQUENCER_DURATION_QUARTER]   = sequencer->state.sample_rate * 60 / bpm;
+    sequencer->state.durations[SEQUENCER_DURATION_QUARTER]   = CONFIG_AUDIO_SAMPLE_RATE * 60 / bpm;
     sequencer->state.durations[SEQUENCER_DURATION_EIGHTH]    = sequencer->state.durations[SEQUENCER_DURATION_QUARTER] / 2;
     sequencer->state.durations[SEQUENCER_DURATION_SIXTEENTH] = sequencer->state.durations[SEQUENCER_DURATION_EIGHTH]  / 2;
 
@@ -110,7 +109,7 @@ void sequencer_process(sequencer_t* sequencer, size_t n_samples_passed) {
 
         ESP_LOGD(TAG, "Triggering note-on for note %i with velocity %f and duration %i samples",
                 sequencer->state.notes_playing[i].note, velocity, sequencer->state.notes_playing[i].samples_remaining);
-        
+
         synth_note_on(sequencer->params.synth, sequencer->state.notes_playing[i].note, velocity);
         break;
     }

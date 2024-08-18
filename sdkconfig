@@ -386,6 +386,36 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# >>> Klimper Configuration <<<
+#
+
+#
+# Audio Hardware
+#
+CONFIG_I2S_MCLK_GPIO=-1
+CONFIG_I2S_WSEL_GPIO=25
+CONFIG_I2S_BCLK_GPIO=27
+CONFIG_I2S_DOUT_GPIO=26
+CONFIG_AUDIO_SAMPLE_RATE=44100
+CONFIG_AUDIO_N_SAMPLES_BUFFER=880
+CONFIG_AUDIO_N_SAMPLES_CYCLE=220
+# end of Audio Hardware
+
+#
+# Audio Synthesis
+#
+CONFIG_DSP_WAVETABLE_LENGTH=512
+CONFIG_SYNTH_POLYPHONY=16
+# end of Audio Synthesis
+
+#
+# User Interface
+#
+CONFIG_UI_BTN_STARTSTOP_GPIO=34
+# end of User Interface
+# end of >>> Klimper Configuration <<<
+
+#
 # Compiler options
 #
 # CONFIG_COMPILER_OPTIMIZATION_DEBUG is not set

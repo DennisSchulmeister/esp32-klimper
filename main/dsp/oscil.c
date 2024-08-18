@@ -1,7 +1,7 @@
 /*
  * ESP32 I²S Synthesizer Test / µDSP Library
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -24,9 +24,9 @@ dsp_oscil_t* dsp_oscil_new(dsp_wavetable_t* wavetable) {
 /**
  * Reinitialize oscillator with the given frequency.
  */
-void dsp_oscil_reinit(dsp_oscil_t* oscil, int sample_rate, float frequency, bool reset_index) {
+void dsp_oscil_reinit(dsp_oscil_t* oscil, float frequency, bool reset_index) {
     oscil->frequency = frequency;
-    oscil->increment = frequency * oscil->wavetable->length / sample_rate;
+    oscil->increment = frequency * oscil->wavetable->length / CONFIG_AUDIO_SAMPLE_RATE;
     if (reset_index) oscil->index = 0;
 }
 

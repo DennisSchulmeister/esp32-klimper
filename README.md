@@ -1,5 +1,5 @@
-ESP32 I²S Synthesizer Test
-==========================
+Klimper - ESP32 I²S Synthesizer Test
+====================================
 
 1. [Demo](#demo)
 1. [Description](#description)
@@ -13,6 +13,9 @@ Demo
 ----
 
 TODO - Now that it is producing sound. :-)
+
+This project is called "Klimper" because when you do nothing, it just plays some random notes
+of the C major scale ("klimpern" in German).
 
 Description
 -----------
