@@ -40,7 +40,7 @@ typedef struct {
  * on the synthesizer.
  */
 typedef struct {
-    struct {
+    volatile struct {
         synth_t* synth;                     // The controlled synthesizer (not freed)
         float    bpm;                       // Tempo in beats per minute
         bool     running;                   // Play state (playing or stopped)

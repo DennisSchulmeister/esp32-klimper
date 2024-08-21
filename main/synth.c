@@ -186,7 +186,7 @@ void IRAM_ATTR synth_process(synth_t* synth, float* audio_buffer, size_t length)
             synth_voice_t* voice = &synth->state.voices[j];
 
             float sample2 = dsp_oscil_tick(voice->osc2, 0.0f)    * dsp_adsr_tick(voice->env2) * voice->fm_index_2_1;
-            float sample1 = dsp_oscil_tick(voice->osc1, sample2) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging;
+            float sample1 = dsp_oscil_tick(voice->osc1, sample2) * dsp_adsr_tick(voice->env1) * synth->state.gain_staging * synth->params.volume;
 
             float left, right;
             float pan = dsp_oscil_tick(voice->lfo1, 0.0f) * 0.75f;

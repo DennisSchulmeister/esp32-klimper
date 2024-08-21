@@ -34,8 +34,8 @@ static dsp_wavetable_t* wavetable = NULL;
 static synth_t*         synth     = NULL;
 static sequencer_t*     sequencer = NULL;
 
-void cb_sequencer_start_stop() { sequencer_set_bpm(sequencer, sequencer->params.bpm); }
-void cb_sequencer_set_bpm()    { sequencer_set_running(sequencer, !sequencer->params.running); }
+void cb_sequencer_set_bpm()    { sequencer_set_bpm(sequencer, sequencer->params.bpm); }
+void cb_sequencer_start_stop() { sequencer_set_running(sequencer, !sequencer->params.running); }
 
 /**
  * Application entry point
@@ -144,7 +144,7 @@ void app_main(void) {
                 .value = &synth->params.volume,
                 .min   = 0.0f,
                 .max   = 1.0f,
-                .step  = 0.1f,
+                .step  = 0.05f,
             },
         },
     };

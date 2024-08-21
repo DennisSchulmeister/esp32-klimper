@@ -2,8 +2,11 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
+# DES - Additional libraries
+set(EXTRA_COMPONENT_DIRS lib/esp-idf-lib/components)
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(klimper)
 
-# Warn when inline function gets not inlined
+# DES - Warn when inline function gets not inlined
 add_compile_options(-Winline)

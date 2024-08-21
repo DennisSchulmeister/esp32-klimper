@@ -23,7 +23,7 @@ static const char* TAG = "UI";              // Logging tag
 
 static const TickType_t q_wait_delay    = 100 / portTICK_PERIOD_MS;             // Max. waiting time for the event queue
 static const TickType_t debounce_button = 500 / portTICK_PERIOD_MS;             // Artificial delay to debounce the buttons
-static const TickType_t debounce_rotary = 100 / portTICK_PERIOD_MS;             // Artificial delay to debounce the rotary encoder
+static const TickType_t debounce_rotary = 40  / portTICK_PERIOD_MS;             // Artificial delay to debounce the rotary encoder
 
 ui_menu_t copy_menu                    (ui_menu_t* menu_orig);
 uint64_t  gpio_bitmask                 (int io_pin);
@@ -133,7 +133,6 @@ ui_menu_t copy_menu(ui_menu_t* menu_orig) {
 
             cmd_copy.name = malloc(strlen(cmd_orig.name) + 1);
             strcpy(cmd_copy.name, cmd_orig.name);
-
             cmd_copy.sub_menu = copy_menu(&cmd_orig.sub_menu);
         }
     }
@@ -169,9 +168,9 @@ uint64_t calc_cmd_button_gpio_bitmask(ui_menu_t* menu) {
  */
 void add_cmd_button_isr_handlers(ui_menu_t* menu) {
     for (int i = 0; i < menu->n_commands; i++) {
-        ui_command_t cmd = menu->commands[i];
-        if (cmd.button_io > 0) gpio_isr_handler_add(cmd.button_io, cmd_button_isr_handler, (void*) &cmd);
-        add_cmd_button_isr_handlers(&cmd.sub_menu);
+        ui_command_t* cmd = &menu->commands[i];
+        if (cmd->button_io > 0) gpio_isr_handler_add(cmd->button_io, cmd_button_isr_handler, (void*) cmd);
+        add_cmd_button_isr_handlers(&cmd->sub_menu);
     }
 }
 
@@ -249,12 +248,12 @@ void ui_task(void* parameters) {
 
         switch (event.type) {
             case DUMMY:
-                ESP_LOGI(TAG, "Handle DUMMY event");
+                ESP_LOGD(TAG, "Handle DUMMY event");
                 refresh = true;
                 break;
 
             case ENTER:
-                ESP_LOGI(TAG, "Handle ENTER event");
+                ESP_LOGD(TAG, "Handle ENTER event");
 
                 ui_command_t* cmd = event.cmd;
 
@@ -263,22 +262,24 @@ void ui_task(void* parameters) {
                 }
 
                 if (!cmd) break;
-                if (screen_queue.i >= MAX_SCREENS - 1) screen_queue.i = 0;
+                if (cmd->cb.execute) cmd->cb.execute(cmd->cb.arg);
 
-                screen_queue.i++;
-                screen = &screen_queue.q[screen_queue.i];
-                memset(screen, 0, sizeof(ui_screen_t));
+                if (cmd->param.value || cmd->sub_menu.commands) {
+                    if (screen_queue.i >= MAX_SCREENS - 1) screen_queue.i = 0;
 
-                if (cmd->param.value) screen->cmd = cmd;
-                else if (cmd->sub_menu.commands) screen->menu = &cmd->sub_menu;
-                else break;
+                    screen_queue.i++;
+                    screen = &screen_queue.q[screen_queue.i];
+                    memset(screen, 0, sizeof(ui_screen_t));
+
+                    if (cmd->param.value) screen->cmd = cmd;
+                    else if (cmd->sub_menu.commands) screen->menu = &cmd->sub_menu;
+                }
 
                 refresh = true;
-
                 break;
 
             case EXIT:
-                ESP_LOGI(TAG, "Handle EXIT event");
+                ESP_LOGD(TAG, "Handle EXIT event");
 
                 if (screen_queue.i > 0) {
                     screen_queue.i--;
@@ -288,14 +289,14 @@ void ui_task(void* parameters) {
                 break;
 
             case HOME:
-                ESP_LOGI(TAG, "Handle HOME event");
+                ESP_LOGD(TAG, "Handle HOME event");
 
                 screen_queue.i = 0;
                 refresh = true;
                 break;
 
             case INCREASE:
-                ESP_LOGI(TAG, "Handle INCREASE event");
+                ESP_LOGD(TAG, "Handle INCREASE event");
 
                 if (screen->cmd && screen->cmd->param.value) {
                     if (*screen->cmd->param.value < screen->cmd->param.max) {
@@ -312,7 +313,7 @@ void ui_task(void* parameters) {
                 break;
 
             case DECREASE:
-                ESP_LOGI(TAG, "Handle DECREASE event");
+                ESP_LOGD(TAG, "Handle DECREASE event");
 
                 if (screen->cmd && screen->cmd->param.value) {
                     if (*screen->cmd->param.value > screen->cmd->param.min) {
@@ -330,7 +331,7 @@ void ui_task(void* parameters) {
         }
 
         if (!refresh) continue;
-        ESP_LOGI(TAG, "Refresh display");
+        ESP_LOGD(TAG, "Refresh display");
 
         refresh = false;
         screen  = &screen_queue.q[screen_queue.i];

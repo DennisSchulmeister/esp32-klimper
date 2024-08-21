@@ -52,7 +52,7 @@ typedef struct ui_command {
     bool  hidden;                           // Don't show command in the menu
 
     struct {                                // Numeric parameter (optional)
-        float* value;                       // Value changeable via rotary encoder
+        volatile float* value;              // Value changeable via rotary encoder
         float  min;                         // Minimum allowed value
         float  max;                         // Maximum allowed value
         float  step;                        // Step size (delta for one encoder tick)

@@ -49,7 +49,7 @@ typedef struct {
  * A very simple, polyphonic wavetable synthesizer. Nothing to write home about. :-)
  */
 typedef struct {
-    struct {
+    volatile struct {
         float volume;                       // Overall volume
 
         dsp_adsr_values_t env1;             // Carrier: Amplitude envelope generator parameters
