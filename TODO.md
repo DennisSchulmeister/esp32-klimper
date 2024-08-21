@@ -8,3 +8,4 @@ space = open, X = done, * = started
 - [*] Implement two-oscillator FM with random FM index and ratio, changing both over time
 - [X] Hardware button to start/stop the sequencer
 - [*] MIDI input to play the synthesizer in real-time from a MIDI keyboard
+- [ ] Split voice allocator from synthesizer?

@@ -60,7 +60,7 @@ The firmware is split into a few modules:
 * `sequencer.c`: Control logic that "plays" the synthesizer
 * `midi.c`: Real-time control of the synthesizer via MIDI
 * `utils.c`: General utility functions
-* `driver/*.c`: Low-level hardware interacing (I²S, MIDI)
+* `driver/*.c`: Low-level hardware interfacing (I²S, MIDI)
 * `dsp/*.c`: Elementary DSP building blocks
 * `ui/*.c`: User interface (hardware buttons, display etc.)
 * `ui/display/*.c`: Different LCD display implementations

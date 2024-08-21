@@ -25,7 +25,7 @@ static const char* TAG = "UI";              // Logging tag
 static const TickType_t q_wait_delay   = 100 / portTICK_PERIOD_MS;      // Max. waiting time for the event queue
 static const int debounce_button_ms    = 300;                           // Artificial delay to debounce the buttons
 static const int debounce_rotary_ms    = 50;                            // Artificial delay to debounce the rotary encoder
-static volatile int64_t debounce_until = 0;                             // System time until to ignore GPIO events
+static volatile int64_t debounce_until = 0;                             // System time until when to ignore GPIO events
 
 typedef enum {
     UI_BUTTON_NONE = 0,                     // No button-press detected or button was already handled
@@ -229,20 +229,6 @@ ui_button_event_t get_button_event() {
 }
 
 /**
- * Execute the given command object by calling its execute callback and starting the appropriate
- * screen, if there is any.
- */
-ui_button_event_t execute_command(ui_command_t* cmd) {
-    if (cmd->cb.execute) cmd->cb.execute(cmd->cb.arg);
-
-    if (cmd->param.value)       return screen_parameter(cmd);
-    if (cmd->sub_menu.commands) return screen_menu(&cmd->sub_menu);
-
-    ui_button_event_t dummy = {};
-    return dummy;
-}
-
-/**
  * Background task for the actual UI logic. Simply sits in a loop and calls the function
  * the runs the home screen. Also handles the global buttons that the home screen returns
  * because it cannot handle them itself.
@@ -255,6 +241,20 @@ void ui_task(void* parameters) {
             event = execute_command(event.cmd);
         }
     }
+}
+
+/**
+ * Execute the given command object by calling its execute callback and starting the appropriate
+ * screen, if there is any.
+ */
+ui_button_event_t execute_command(ui_command_t* cmd) {
+    if (cmd->cb.execute) cmd->cb.execute(cmd->cb.arg);
+
+    if (cmd->param.value)       return screen_parameter(cmd);
+    if (cmd->sub_menu.commands) return screen_menu(&cmd->sub_menu);
+
+    ui_button_event_t dummy = {};
+    return dummy;
 }
 
 /**
@@ -353,7 +353,7 @@ ui_button_event_t screen_parameter(ui_command_t* cmd) {
                 break;
 
             default:
-                // Buttons handled by parent
+                // Buttons handled by one of the parents
                 return event;
         }
     }
