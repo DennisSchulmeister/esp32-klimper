@@ -1,5 +1,5 @@
 /*
- * ESP32 I²S Synthesizer Test
+ * Klimper: ESP32 I²S Synthesizer Test
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -42,7 +42,7 @@ typedef struct {
 typedef struct {
     struct {
         synth_t* synth;                     // The controlled synthesizer (not freed)
-        int      bpm;                       // Tempo in beats per minute
+        float    bpm;                       // Tempo in beats per minute
         bool     running;                   // Play state (playing or stopped)
     } params;
 

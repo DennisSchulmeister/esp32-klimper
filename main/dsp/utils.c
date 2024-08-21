@@ -1,5 +1,5 @@
 /*
- * ESP32 I²S Synthesizer Test / µDSP Library
+ * Klimper: ESP32 I²S Synthesizer Test / µDSP Library
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
  * 
  * This program is free software: you can redistribute it and/or modify

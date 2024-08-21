@@ -1,5 +1,5 @@
 /*
- * ESP32 I²S Synthesizer Test
+ * Klimper: ESP32 I²S Synthesizer Test
  * © 2024 Dennis Schulmeister-Zimolong <dennis@wpvs.de>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -13,10 +13,14 @@
 #include <portmacro.h>                      // spinlock_t
 #include <esp_log.h>                        // ESP_LOGx
 #include <stdbool.h>                        // bool, true, false
-#include "driver/audiohw.h"
-#include "dsp/wavetable.h"
-#include "synth.h"
-#include "sequencer.h"
+
+#include "driver/audiohw.h"                 // audiohw_xyz
+#include "driver/midiio.h"                  // midiio_xyz
+#include "dsp/wavetable.h"                  // dsp_wavetable_xyz
+#include "ui/ui.h"                          // ui_xyz
+#include "synth.h"                          // synth_xyz
+#include "sequencer.h"                      // sequencer_xyz
+#include "midi.h"                           // midi_xyz
 
 // DSP task: Called by the audio hardware to generate new audio
 void dsp_task(void* parameters);
@@ -29,6 +33,9 @@ static float dsp_buffer[CONFIG_AUDIO_N_SAMPLES_BUFFER] = {};
 static dsp_wavetable_t* wavetable = NULL;
 static synth_t*         synth     = NULL;
 static sequencer_t*     sequencer = NULL;
+
+void cb_sequencer_start_stop() { sequencer_set_bpm(sequencer, sequencer->params.bpm); }
+void cb_sequencer_set_bpm()    { sequencer_set_running(sequencer, !sequencer->params.running); }
 
 /**
  * Application entry point
@@ -86,8 +93,8 @@ void app_main(void) {
     sequencer_set_bpm(sequencer, 80);
     sequencer_set_running(sequencer, true);
 
-    // Initialize audio hardware and mixer task. This must happen last to avoid
-    // using the DSP objects before they are initialized.
+    // Initialize audio hardware and mixer task. This must happen after the DSP
+    // and synthesizer to avoid using the DSP objects before they are initialized.
     xTaskCreatePinnedToCore(
         /* pvTaskCode    */ dsp_task,
         /* pcName        */ "dsp_task",
@@ -109,6 +116,53 @@ void app_main(void) {
     };
 
     audiohw_init(&audiohw_config);
+
+    // TODO: Initialize MIDI I/O.
+
+    // Initialize (hardware) user interface
+    ui_command_t main_commands[] = {
+        {
+            .name       = "Start/Stop",
+            .button_io  = CONFIG_UI_BTN_SEQ_START_GPIO,
+            .cb.execute = cb_sequencer_start_stop,
+        },
+        {
+            .name      = "Sequencer BPM",
+            .button_io = CONFIG_UI_BTN_SEQ_BPM_GPIO,
+            .cb.value  = cb_sequencer_set_bpm,
+            .param = {
+                .value = &sequencer->params.bpm,
+                .min   = 1.0f,
+                .max   = 280.0f,
+                .step  = 1.0f,
+            },
+        },
+        {
+            .name      = "Master Volume",
+            .button_io = CONFIG_UI_BTN_SYNTH_VOLUME_GPIO,
+            .param = {
+                .value = &synth->params.volume,
+                .min   = 0.0f,
+                .max   = 1.0f,
+                .step  = 0.1f,
+            },
+        },
+    };
+
+    ui_config_t ui_config = {
+        .renc_clk_io  = CONFIG_UI_RENC_CLK_GPIO,
+        .renc_dir_io  = CONFIG_UI_RENC_DIR_GPIO,
+        .btn_enter_io = CONFIG_UI_BTN_ENTER,
+        .btn_exit_io  = CONFIG_UI_BTN_EXIT,
+        .btn_home_io  = CONFIG_UI_BTN_HOME,
+
+        .main_menu = {
+            .n_commands = sizeof(main_commands) / sizeof(ui_command_t),
+            .commands   = main_commands,
+        },
+    };
+
+    ui_init(&ui_config);
 }
 
 /**

@@ -1,4 +1,4 @@
-menu ">>> Klimper Configuration <<<"
+menu " Klimper Configuration"
     menu "Audio Hardware"
         config I2S_MCLK_GPIO
             int "I²S DAC: Master clock GPIO pin"
@@ -106,7 +106,7 @@ menu ">>> Klimper Configuration <<<"
 
         config SYNTH_POLYPHONY
             int "Synthesizer polyphony (number voices)"
-            default 32
+            default 16
             help
                 The maximum number of voices the synthesizer can play at the same time. More is better but
                 uses more processing power. If all voices are playing the voice allocator tries to steal
@@ -114,10 +114,130 @@ menu ">>> Klimper Configuration <<<"
     endmenu
 
     menu "User Interface"
-        config UI_BTN_STARTSTOP_GPIO
-            int "Start/stop button: GPIO input pin"
-            default 34
-            help
-                GPIO pin number to be used for the "start/stop sequencer" button
+        menu "Rotary encoder & navigation"
+            config UI_RENC_CLK_GPIO
+                int "Rotary encoder: Clock (A) GPIO pin"
+                default 35
+                help
+                    GPIO input pin number for the rotary encoder clock signal (aka signal A).
+                    Add an external pull-up resistor when using the default value!
+
+            config UI_RENC_DIR_GPIO
+                int "Rotary encoder: Direction (B) GPIO pin"
+                default 34
+                help
+                    GPIO input pin number for the rotary encoder direction signal (aka signal B).
+                    Add an external pull-up resistor when using the default value!
+
+            config UI_BTN_ENTER
+                int "Rotary encoder: Button GPIO pin (Enter button)"
+                default 39
+                help
+                    GPIO input pin number for the rotary encoder push button. If your rotary encoder
+                    has no push button, add a regular button in close proximity. This button will be
+                    used as ENTER button to select/execute a menu entry.
+
+                    Add an external pull-up resistor when using the default value! Pin 39 is also called SVN.
+
+            config UI_BTN_EXIT
+                int "Exit button: GPIO pin"
+                default 36
+                help
+                    GPIO input pin number of the EXIT hardware button. This button should be in close
+                    proximity of the rotary encoder or ENTER button, as it is used to exit and go back
+                    to the previous screen.
+
+                    Add an external pull-up resistor when using the default value! Pin 36 is also called SVP.
+
+            config UI_BTN_HOME
+                int "Home button: GPIO pin"
+                default -1
+                help
+                    GPIO input pin number of the HOME (Main menu) hardware button. This button exits
+                    all screens and always returns to the main menu.
+        endmenu
+
+        menu "LCD display"
+            choice
+                prompt "LCD display type"
+
+                ### Serial console
+                config UI_LCD_TYPE_CONSOLE
+                    bool "Serial console"
+                    help
+                        Simulate a LCD display by printing its content on the serial console.
+
+                ### 1602 with HD44780 4-Bit parallel interface
+                config UI_LCD_TYPE_1602P
+                    bool "16x2 Character Display with 4-bit parallel interface"
+                    help
+                        Classical 16 characters x 2 lines LCD display with HD44780 compatible
+                        4-bit parallel interface (Intel 8080 style). This is *the* commodity
+                        LCD display of early digital devices like the Yamaha DX7 and many more.
+
+                config UI_LCD_1602P_RS_GPIO
+                    int "RS GPIO Pin"
+                    depends on UI_LCD_TYPE_1602P
+                    default 5
+                    help
+                        GPIO output pin for the RS (register select) signal of the HD44780
+                        LCD controller.
+
+                config UI_LCD_1602P_E_GPIO
+                    int "E GPIO Pin"
+                    depends on UI_LCD_TYPE_1602P
+                    default 18
+                    help
+                        GPIO output pin for the E (enable) signal of the HD44780 LCD controller.
+
+                config UI_LCD_1602P_D4_GPIO
+                    int "D4 GPIO Pin"
+                    depends on UI_LCD_TYPE_1602P
+                    default 19
+                    help
+                        GPIO output pin for the D4 (data 4) signal of the HD44780 LCD controller.
+
+                config UI_LCD_1602P_D5_GPIO
+                    int "D5 GPIO Pin"
+                    depends on UI_LCD_TYPE_1602P
+                    default 21
+                    help
+                        GPIO output pin for the D5 (data 5) signal of the HD44780 LCD controller.
+
+                config UI_LCD_1602P_D6_GPIO
+                    int "D6 GPIO Pin"
+                    depends on UI_LCD_TYPE_1602P
+                    default 22
+                    help
+                        GPIO output pin for the D6 (data 6) signal of the HD44780 LCD controller.
+
+                config UI_LCD_1602P_D7_GPIO
+                    int "D7 GPIO Pin"
+                    depends on UI_LCD_TYPE_1602P
+                    default 23
+                    help
+                        GPIO output pin for the D7 (data 7) signal of the HD44780 LCD controller.
+            endchoice
+        endmenu
+
+        menu "Additional hardware buttons"
+            config UI_BTN_SEQ_START_GPIO
+                int "Sequencer start/stop button: GPIO pin (optional)"
+                default 32
+                help
+                    GPIO input pin number for the "start/stop sequencer" button.
+
+            config UI_BTN_SEQ_BPM_GPIO
+                int "Sequencer BPM button: GPIO pin (optional)"
+                default -1
+                help
+                    GPIO input pin number for the "Sequencer BPM" button.
+
+            config UI_BTN_SYNTH_VOLUME_GPIO
+                int "Synthesizer volume button: GPIO pin (optional)"
+                default -1
+                help
+                    GPIO input pin number for the "Synthesizer volume" button.
+        endmenu
     endmenu
 endmenu

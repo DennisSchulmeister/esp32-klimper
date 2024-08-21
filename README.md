@@ -56,11 +56,14 @@ to hopefully get acceptable real-time performance on the ESP32.
 The firmware is split into a few modules:
 
 * `main.c`: Startup and glue code
-* `audiohw.c`: I²S initialization and interrupt handling
 * `synth.c`: A generic synthesizer to generate some sound
 * `sequencer.c`: Control logic that "plays" the synthesizer
+* `midi.c`: Real-time control of the synthesizer via MIDI
 * `utils.c`: General utility functions
+* `driver/*.c`: Low-level hardware interacing (I²S, MIDI)
 * `dsp/*.c`: Elementary DSP building blocks
+* `ui/*.c`: User interface (hardware buttons, display etc.)
+* `ui/display/*.c`: Different LCD display implementations
 
 `main.c` starts a "DSP task" that is woken up by the audio interrupt whenever a new chunk of audio
 must be produced. This task calls the sequencer and the synthesizer to fill a sample buffer that will
