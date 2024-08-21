@@ -14,6 +14,7 @@
 #include <freertos/FreeRTOS.h>              // Common FreeRTOS
 #include <freertos/task.h>                  // FreeRTOS task management
 #include <freertos/queue.h>                 // FreeRTOS queue data structure
+#include <esp_timer.h>                      // esp_timer_get_time
 #include <driver/gpio.h>                    // ESP32 GPIO handling
 #include <esp_log.h>                        // ESP_LOGx
 #include <stdbool.h>                        // bool, true, false
@@ -21,51 +22,45 @@
 
 static const char* TAG = "UI";              // Logging tag
 
-static const TickType_t q_wait_delay    = 100 / portTICK_PERIOD_MS;             // Max. waiting time for the event queue
-static const TickType_t debounce_button = 500 / portTICK_PERIOD_MS;             // Artificial delay to debounce the buttons
-static const TickType_t debounce_rotary = 40  / portTICK_PERIOD_MS;             // Artificial delay to debounce the rotary encoder
-
-ui_menu_t copy_menu                    (ui_menu_t* menu_orig);
-uint64_t  gpio_bitmask                 (int io_pin);
-uint64_t  calc_cmd_button_gpio_bitmask (ui_menu_t* menu);
-void      add_cmd_button_isr_handlers  (ui_menu_t* menu);
-void      menu_button_isr_handler      (void *arg);
-void      cmd_button_isr_handler       (void *arg);
-void      rotary_encoder_isr_handler   (void *arg);
-void      debounce                     (TickType_t delay);
-void      ui_task                      (void* parameters);
-
-ui_config_t   config       = {};            // UI configuration (global copy)
-QueueHandle_t event_queue  = {};            // FIFO queue for messages from ISR to UI task
+static const TickType_t q_wait_delay   = 100 / portTICK_PERIOD_MS;      // Max. waiting time for the event queue
+static const int debounce_button_ms    = 300;                           // Artificial delay to debounce the buttons
+static const int debounce_rotary_ms    = 50;                            // Artificial delay to debounce the rotary encoder
+static volatile int64_t debounce_until = 0;                             // System time until to ignore GPIO events
 
 typedef enum {
-    DUMMY,
-    ENTER,
-    EXIT,
-    HOME,
-    INCREASE,
-    DECREASE,
-} ui_event_type_t;
+    UI_BUTTON_NONE = 0,                     // No button-press detected or button was already handled
+    UI_BUTTON_ENTER,                        // ENTER button
+    UI_BUTTON_EXIT,                         // EXIT button
+    UI_BUTTON_HOME,                         // HOME button
+    UI_BUTTON_INCREASE,                     // Rotary encoder INCREASE
+    UI_BUTTON_DECREASE,                     // Rotary encoder DECREASE
+    UI_BUTTON_COMMAND,                      // One of the configured command buttons
+} ui_button_t;
 
-typedef struct {                            // Event sent from ISR to UI task
-    ui_event_type_t type;                   // Event type (e.g. execute command)
-    ui_command_t*   cmd;                    // Associated command definition
-    TickType_t      debounce;               // Debouncing time
-} ui_event_t;
+typedef struct {
+    ui_button_t   btn;                      // Pressed button
+    ui_command_t* cmd;                      // Command button: Which command
+} ui_button_event_t;
 
-typedef struct {                            // Entry in the navigation history below
-    ui_menu_t*    menu;                     // Either: Visible menu
-unsigned int  selection;                // Selected menu item
+// Utility functions
+ui_menu_t         copy_menu                    (ui_menu_t* menu_orig);
+uint64_t          gpio_bitmask                 (int io_pin);
+uint64_t          calc_cmd_button_gpio_bitmask (ui_menu_t* menu);
+void              add_cmd_button_isr_handlers  (ui_menu_t* menu);
+void              cmd_button_isr_handler       (void *arg);
+void              menu_button_isr_handler      (void *arg);
+void              rotary_encoder_isr_handler   (void *arg);
+bool              debounce                     (int millis);
+ui_button_event_t get_button_event             ();
+ui_button_event_t execute_command              (ui_command_t* cmd);
 
-    ui_command_t* cmd;                      // Or: Visible float parameter
-} ui_screen_t;
+// Screen logic
+ui_button_event_t screen_menu                  (ui_menu_t* menu);
+ui_button_event_t screen_parameter             (ui_command_t* cmd);
+void              ui_task                      (void* parameters);
 
-#define MAX_SCREENS (10)
-
-struct {                                    // Navigation history for the BACK button
-    ui_screen_t q[MAX_SCREENS];             // Queue
-    size_t i;                               // Index
-} screen_queue = {};
+ui_config_t config = {};                    // UI configuration (global copy)
+QueueHandle_t event_queue  = {};            // FIFO queue for messages from ISR to UI task
 
 /**
  * Initialize user interface
@@ -74,13 +69,9 @@ void ui_init(ui_config_t* cfg) {
     config = *cfg;
     config.main_menu = copy_menu(&cfg->main_menu);
 
-    screen_queue.q[0].menu      = &config.main_menu;
-    screen_queue.q[0].selection = 0;
+    event_queue = xQueueCreate(10, sizeof(ui_button_event_t));
 
-    event_queue = xQueueCreate(10, sizeof(ui_event_t));
-
-    ui_event_t dummy_event = {.type = DUMMY};
-    xQueueSend(event_queue, &dummy_event, 0);
+    ui_display_init();
 
     gpio_config_t gpio_config_input = {
         .intr_type    = GPIO_INTR_NEGEDGE,
@@ -97,9 +88,9 @@ void ui_init(ui_config_t* cfg) {
     gpio_install_isr_service(0);
 
     if (config.renc_clk_io  > 0) gpio_isr_handler_add(config.renc_clk_io,  rotary_encoder_isr_handler, NULL);
-    if (config.btn_enter_io > 0) gpio_isr_handler_add(config.btn_enter_io, menu_button_isr_handler,    (void*) ENTER);
-    if (config.btn_exit_io  > 0) gpio_isr_handler_add(config.btn_exit_io,  menu_button_isr_handler,    (void*) EXIT);
-    if (config.btn_home_io  > 0) gpio_isr_handler_add(config.btn_home_io,  menu_button_isr_handler,    (void*) HOME);
+    if (config.btn_enter_io > 0) gpio_isr_handler_add(config.btn_enter_io, menu_button_isr_handler,    (void*) UI_BUTTON_ENTER);
+    if (config.btn_exit_io  > 0) gpio_isr_handler_add(config.btn_exit_io,  menu_button_isr_handler,    (void*) UI_BUTTON_EXIT);
+    if (config.btn_home_io  > 0) gpio_isr_handler_add(config.btn_home_io,  menu_button_isr_handler,    (void*) UI_BUTTON_HOME);
 
     add_cmd_button_isr_handlers(&config.main_menu);
 
@@ -141,7 +132,7 @@ ui_menu_t copy_menu(ui_menu_t* menu_orig) {
 }
 
 /**
- * Set GPIO bit mask for a single pin. But only, of the pin number is positive.
+ * Set GPIO bit mask for a single pin. But only, if the pin number is positive.
  */
 uint64_t gpio_bitmask(int io_pin) {
     if (io_pin <= 0) return 0ULL;
@@ -164,27 +155,25 @@ uint64_t calc_cmd_button_gpio_bitmask(ui_menu_t* menu) {
 }
 
 /**
- * Register button interrupt handler for all hardware buttons of the menu.
+ * Recursive function to register the interrupt handler for all direct-access buttons
+ * inside the given menu.
  */
 void add_cmd_button_isr_handlers(ui_menu_t* menu) {
     for (int i = 0; i < menu->n_commands; i++) {
         ui_command_t* cmd = &menu->commands[i];
-        if (cmd->button_io > 0) gpio_isr_handler_add(cmd->button_io, cmd_button_isr_handler, (void*) cmd);
+        if (cmd->button_io > 0) {
+            gpio_isr_handler_add(cmd->button_io, cmd_button_isr_handler, (void*) cmd);
+        }
         add_cmd_button_isr_handlers(&cmd->sub_menu);
     }
 }
 
 /**
- * Interrupt handler for the menu navigation buttons ENTER and EXIT. Sends the corresponding
- * message to the UI task. Note that event ENTER without a command means to execute the currently
- * highlighted menu item.
+ * Interrupt handler for the direct-access command buttons. Posts a button event to the UI task.
  */
-void IRAM_ATTR menu_button_isr_handler(void* arg) {
-    ui_event_t event = {
-        .type     = (ui_event_type_t) arg,
-        .cmd      = NULL,
-        .debounce = debounce_button,
-    };
+void cmd_button_isr_handler(void *arg) {
+    if (debounce(debounce_button_ms)) return;
+    ui_button_event_t event = {.btn = UI_BUTTON_COMMAND, .cmd = (ui_command_t*) arg};
 
     BaseType_t higherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(event_queue, &event, &higherPriorityTaskWoken);
@@ -192,15 +181,11 @@ void IRAM_ATTR menu_button_isr_handler(void* arg) {
 }
 
 /**
- * Interrupt handler for the additional buttons that directly execute a command.
- * Sends a message to the UI task to execute the selected command.
+ * Interrupt handler for the navigation buttons. Posts a button event to the UI task.
  */
-void IRAM_ATTR cmd_button_isr_handler(void* arg) {
-    ui_event_t event = {
-        .type     = ENTER,
-        .cmd      = (ui_command_t*) arg,
-        .debounce = debounce_button,
-    };
+void menu_button_isr_handler(void *arg) {
+    if (debounce(debounce_button_ms)) return;
+    ui_button_event_t event = {.btn = (ui_button_t) arg};
 
     BaseType_t higherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(event_queue, &event, &higherPriorityTaskWoken);
@@ -208,16 +193,12 @@ void IRAM_ATTR cmd_button_isr_handler(void* arg) {
 }
 
 /**
- * Interrupt handler for the rotary encoder. Decodes the direction and sends an appropriate
- * message to the UI task.
- **/
-void IRAM_ATTR rotary_encoder_isr_handler(void* arg) {
+ * Interrupt handler for the rotary encoder. Posts a button event to the UI task.
+ */
+void rotary_encoder_isr_handler(void *arg) {
+    if (debounce(debounce_rotary_ms)) return;
     bool increase = gpio_get_level(config.renc_dir_io);
-
-    ui_event_t event = {
-        .type     = increase ? INCREASE : DECREASE,
-        .debounce = debounce_rotary,
-    };
+    ui_button_event_t event = { .btn = increase ? UI_BUTTON_INCREASE : UI_BUTTON_DECREASE };
 
     BaseType_t higherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(event_queue, &event, &higherPriorityTaskWoken);
@@ -225,121 +206,156 @@ void IRAM_ATTR rotary_encoder_isr_handler(void* arg) {
 }
 
 /**
- * Cheated debouncing of the hardware buttons and rotary encoder. This simply delays
- * the UI task and discards all GPIO events collected in between.
+ * Utility function to debounce GPIO inputs. Returns `true` when we are still debouncing
+ * and the current event must be ignored. Saves the time until when debounce occurs.
  */
-void debounce(TickType_t delay) {
-    vTaskDelay(delay);
-    xQueueReset(event_queue);
-
+bool debounce(int millis) {
+    int64_t time  = esp_timer_get_time();
+    int64_t until = debounce_until;
+    debounce_until = time + (millis * 1000);
+    return until > time;
 }
+
 /**
- * Background task for the actual UI logic. Responds to button presses and the rotary
- * encoder to update the LCD display and application parameters.
+ * Get latest button event sent from the interrupt handlers. If no event is received
+ * after `q_wait_delay` milliseconds a `UI_BUTTON_NONE` event is returned.
+ */
+ui_button_event_t get_button_event() {
+    ui_button_event_t event = {};
+    xQueueReceive(event_queue, &event, q_wait_delay);
+
+    if (event.btn) ESP_LOGI(TAG, "Button event: %i", event.btn);
+    return event;
+}
+
+/**
+ * Execute the given command object by calling its execute callback and starting the appropriate
+ * screen, if there is any.
+ */
+ui_button_event_t execute_command(ui_command_t* cmd) {
+    if (cmd->cb.execute) cmd->cb.execute(cmd->cb.arg);
+
+    if (cmd->param.value)       return screen_parameter(cmd);
+    if (cmd->sub_menu.commands) return screen_menu(&cmd->sub_menu);
+
+    ui_button_event_t dummy = {};
+    return dummy;
+}
+
+/**
+ * Background task for the actual UI logic. Simply sits in a loop and calls the function
+ * the runs the home screen. Also handles the global buttons that the home screen returns
+ * because it cannot handle them itself.
  */
 void ui_task(void* parameters) {
-    ui_event_t   event   = {};
-    bool         refresh = false;
-    ui_screen_t* screen  = &screen_queue.q[screen_queue.i];
-
     while (true) {
-        if (!xQueueReceive(event_queue, &event, q_wait_delay)) continue;
-        if (event.debounce) debounce(event.debounce);
+        ui_button_event_t event = screen_menu(&config.main_menu);
 
-        switch (event.type) {
-            case DUMMY:
-                ESP_LOGD(TAG, "Handle DUMMY event");
-                refresh = true;
-                break;
-
-            case ENTER:
-                ESP_LOGD(TAG, "Handle ENTER event");
-
-                ui_command_t* cmd = event.cmd;
-
-                if (event.cmd == NULL && screen->menu && screen->menu->commands) {
-                    cmd = &screen->menu->commands[screen->selection];
-                }
-
-                if (!cmd) break;
-                if (cmd->cb.execute) cmd->cb.execute(cmd->cb.arg);
-
-                if (cmd->param.value || cmd->sub_menu.commands) {
-                    if (screen_queue.i >= MAX_SCREENS - 1) screen_queue.i = 0;
-
-                    screen_queue.i++;
-                    screen = &screen_queue.q[screen_queue.i];
-                    memset(screen, 0, sizeof(ui_screen_t));
-
-                    if (cmd->param.value) screen->cmd = cmd;
-                    else if (cmd->sub_menu.commands) screen->menu = &cmd->sub_menu;
-                }
-
-                refresh = true;
-                break;
-
-            case EXIT:
-                ESP_LOGD(TAG, "Handle EXIT event");
-
-                if (screen_queue.i > 0) {
-                    screen_queue.i--;
-                    refresh = true;
-                }
-
-                break;
-
-            case HOME:
-                ESP_LOGD(TAG, "Handle HOME event");
-
-                screen_queue.i = 0;
-                refresh = true;
-                break;
-
-            case INCREASE:
-                ESP_LOGD(TAG, "Handle INCREASE event");
-
-                if (screen->cmd && screen->cmd->param.value) {
-                    if (*screen->cmd->param.value < screen->cmd->param.max) {
-                        *screen->cmd->param.value += screen->cmd->param.step;
-                        if (screen->cmd->cb.value) screen->cmd->cb.value(screen->cmd->cb.arg);
-                        refresh = true;
-                    }
-                } else if (screen->menu) {
-                    if (screen->selection < (screen->menu->n_commands - 1)) screen->selection++;
-                    else screen->selection = 0;
-                    refresh = true;
-                }
-
-                break;
-
-            case DECREASE:
-                ESP_LOGD(TAG, "Handle DECREASE event");
-
-                if (screen->cmd && screen->cmd->param.value) {
-                    if (*screen->cmd->param.value > screen->cmd->param.min) {
-                        *screen->cmd->param.value -= screen->cmd->param.step;
-                        if (screen->cmd->cb.value) screen->cmd->cb.value(screen->cmd->cb.arg);
-                        refresh = true;
-                    }
-                } else if (screen->menu) {
-                    if (screen->selection > 0) screen->selection--;
-                    else screen->selection = screen->menu->n_commands - 1;
-                    refresh = true;
-                }
-
-                break;
-        }
-
-        if (!refresh) continue;
-        ESP_LOGD(TAG, "Refresh display");
-
-        refresh = false;
-        screen  = &screen_queue.q[screen_queue.i];
-
-        if (screen->menu) {
-            ui_display_show_menu(screen->menu, screen->selection);
-        } else if (screen->cmd->param.value) {
-            ui_display_show_param(screen->cmd->name, *screen->cmd->param.value);
+        if (event.btn == UI_BUTTON_COMMAND && event.cmd) {
+            event = execute_command(event.cmd);
         }
     }
 }
+
+/**
+ * Menu screen.
+ */
+ui_button_event_t screen_menu(ui_menu_t* menu) {
+    bool redraw = true;
+    int selection = 0;
+    ui_button_event_t event = {};
+
+    while (true) {
+        if (redraw) {
+            if (selection < 0) selection = menu->n_commands - 1;
+            else if (selection > menu->n_commands - 1) selection = 0;
+
+            ui_display_show_menu(menu, (unsigned int) selection);
+            redraw = false;
+        }
+
+        if (!event.btn) event = get_button_event();
+
+        switch (event.btn) {
+            case UI_BUTTON_INCREASE:
+                event.btn = UI_BUTTON_NONE;
+                selection++;
+                redraw = true;
+                break;
+
+            case UI_BUTTON_DECREASE:
+                event.btn = UI_BUTTON_NONE;
+                selection--;
+                redraw = true;
+                break;
+
+            case UI_BUTTON_ENTER:
+                event.btn = UI_BUTTON_NONE;
+                event = execute_command(&menu->commands[selection]);
+                redraw = true;
+                break;
+
+            case UI_BUTTON_EXIT:
+                event.btn = UI_BUTTON_NONE;
+                return event;
+
+            case UI_BUTTON_NONE:
+                // Ignored buttons
+                event.btn = UI_BUTTON_NONE;
+                break;
+
+            default:
+                // Buttons handles by one of the parents
+                return event;
+        }
+    }
+}
+
+/**
+ * Change parameter screen.
+ */
+ui_button_event_t screen_parameter(ui_command_t* cmd) {
+    bool redraw = true;
+    ui_button_event_t event = {};
+
+    while (true) {
+        if (redraw) {
+            if (*cmd->param.value < cmd->param.min) *cmd->param.value = cmd->param.min;
+            else if (*cmd->param.value > cmd->param.max) *cmd->param.value = cmd->param.max;
+
+            ui_display_show_param(cmd->name, *cmd->param.value);
+            redraw = false;
+        }
+
+        if (!event.btn) event = get_button_event();
+
+        switch (event.btn) {
+            case UI_BUTTON_INCREASE:
+                event.btn = UI_BUTTON_NONE;
+                *cmd->param.value += cmd->param.step;
+                redraw = true;
+                break;
+
+            case UI_BUTTON_DECREASE:
+                event.btn = UI_BUTTON_NONE;
+                *cmd->param.value -= cmd->param.step;
+                redraw = true;
+                break;
+
+            case UI_BUTTON_EXIT:
+                event.btn = UI_BUTTON_NONE;
+                return event;
+
+            case UI_BUTTON_ENTER:
+            case UI_BUTTON_NONE:
+                // Ignored buttons
+                event.btn = UI_BUTTON_NONE;
+                break;
+
+            default:
+                // Buttons handled by parent
+                return event;
+        }
+    }
+}
+
