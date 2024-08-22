@@ -58,14 +58,18 @@ void dsp_oscil_free(dsp_oscil_t* oscil);
 static inline float dsp_oscil_tick(dsp_oscil_t* oscil, float modulator) {
     float sample = dsp_wavetable_read2(oscil->wavetable, oscil->index);
 
-    // // No FM
-    // oscil->index += oscil->increment;
-
-    // Linear FM (needs a low-pass filter to avoid aliasing)
+    // Funny fact: That is quite similar to how the Yamaha DX7 implements FM.
+    // It simply adds the phase accumulator with the modulator signal, which
+    // are already in the same number range.
+    // See: http://www.righto.com/2021/12/yamaha-dx7-chip-reverse-engineering.html
+    //
+    // When writing this formula I was not sure if this was legit for FM. :-)
+    // The website agrees, considering that this is what makes it "Phase Modulation"
+    // in reality, since not the input frequency but the phase of the carrier
+    // is modulated. This in turn is the same is frequency modulation with the
+    // derivate of the modulator function, which for a sinusoid is another
+    // (90 degree phase shifted) sinusoid.
     oscil->index += oscil->increment + (modulator * oscil->wavetable->length * 0.01f);
-
-    // // Exponential FM (needs low-pass filter and lookup table for powf()! Formula really correct??)
-    // oscil->index += oscil->increment * powf(2.0f, modulator);
 
     while (oscil->index >= oscil->wavetable->length) oscil->index -= oscil->wavetable->length;
     while (oscil->index < 0) oscil->index += oscil->wavetable->length;
